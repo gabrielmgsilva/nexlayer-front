@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root, [data-theme="dark"] {
+    /* ═══ NEXLAYER — Dark theme tokens ═══ */
+    --nex-bg:         #07090C;
+    --nex-surface:    #0D1117;
+    --nex-surface-2:  #11161E;
+    --nex-border:     #1A2029;
+    --nex-border-hi:  #242C38;
+    --nex-text:       #E6EDF3;
+    --nex-text-dim:   #8B96A8;
+    --nex-text-mute:  #5A6675;
+    --nex-cyan:       #00D9FF;
+    --nex-cyan-dim:   rgba(0, 217, 255, 0.12);
+    --nex-green:      #5EFF8A;
+    --nex-amber:      #FFB547;
+    --nex-red:        #FF5C7A;
+    --nex-violet:     #B388FF;
+    --nex-on-primary: #000;
+    --nex-bg-glow-1:  rgba(0, 217, 255, 0.04);
+    --nex-bg-glow-2:  rgba(94, 255, 138, 0.025);
+    color-scheme: dark;
+  }
+
+  [data-theme="light"] {
+    /* ═══ NEXLAYER — Light theme tokens (preserva identidade cyan/violet) ═══ */
+    --nex-bg:         #F4F7FB;
+    --nex-surface:    #FFFFFF;
+    --nex-surface-2:  #F0F4F8;
+    --nex-border:     #E1E8EF;
+    --nex-border-hi:  #CBD5E0;
+    --nex-text:       #0F172A;
+    --nex-text-dim:   #475569;
+    --nex-text-mute:  #94A3B8;
+    --nex-cyan:       #0891B2;
+    --nex-cyan-dim:   rgba(8, 145, 178, 0.10);
+    --nex-green:      #16A34A;
+    --nex-amber:      #D97706;
+    --nex-red:        #DC2626;
+    --nex-violet:     #7C3AED;
+    --nex-on-primary: #FFFFFF;
+    --nex-bg-glow-1:  rgba(8, 145, 178, 0.05);
+    --nex-bg-glow-2:  rgba(22, 163, 74, 0.03);
+    color-scheme: light;
+  }
+
+  :root {
+
+    /* Compat (para componentes que ainda referenciam tokens antigos) */
+    --color-primary-50:  rgba(0, 217, 255, 0.05);
+    --color-primary-100: rgba(0, 217, 255, 0.10);
+    --color-primary-200: rgba(0, 217, 255, 0.20);
+    --color-primary-300: rgba(0, 217, 255, 0.30);
+    --color-primary-400: #66e8ff;
+    --color-primary-500: #00D9FF;
+    --color-primary-600: #00b8db;
+    --color-primary-700: #007a92;
+    --color-primary-800: #024656;
+    --color-primary-900: #001f26;
+    --color-primary-950: #00131A;
+
+    --color-success: #5EFF8A;
+    --color-warning: #FFB547;
+    --color-error:   #FF5C7A;
+    --color-info:    #00D9FF;
+
+    --color-gray-50:  #11161E;
+    --color-gray-100: #1A2029;
+    --color-gray-200: #242C38;
+    --color-gray-300: #3A4452;
+    --color-gray-400: #5A6675;
+    --color-gray-500: #8B96A8;
+    --color-gray-600: #A4AFC0;
+    --color-gray-700: #C5CCD9;
+    --color-gray-800: #E6EDF3;
+    --color-gray-900: #F5F8FB;
+
+    /* ── Tipografia ── */
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-heading: 'Inter', system-ui, sans-serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+
+    /* ── Escala de texto ── */
+    --text-xs:   0.75rem;
+    --text-sm:   0.875rem;
+    --text-base: 1rem;
+    --text-lg:   1.125rem;
+    --text-xl:   1.25rem;
+    --text-2xl:  1.5rem;
+    --text-3xl:  1.875rem;
+    --text-4xl:  2.25rem;
+
+    /* ── Espaçamento ── */
+    --space-1:  0.25rem;
+    --space-2:  0.5rem;
+    --space-3:  0.75rem;
+    --space-4:  1rem;
+    --space-5:  1.25rem;
+    --space-6:  1.5rem;
+    --space-8:  2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+
+    /* ── Border radius ── */
+    --radius-sm:   0.375rem;
+    --radius-md:   0.5rem;
+    --radius-lg:   0.75rem;
+    --radius-xl:   1rem;
+    --radius-full: 9999px;
+
+    /* ── Sombras ── */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.5);
+
+    /* ── Layout ── */
+    --sidebar-width:      220px;
+    --sidebar-collapsed:  72px;
+    --header-height:      64px;
+    --content-max-width:  1440px;
+    --table-row-height:   52px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--nex-bg);
+    color: var(--nex-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 12% 18%, var(--nex-bg-glow-1), transparent 40%),
+      radial-gradient(circle at 88% 82%, var(--nex-bg-glow-2), transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  #root { position: relative; z-index: 1; }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Custom scrollbars */
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: var(--nex-border); border-radius: 4px; }
+  *::-webkit-scrollbar-thumb:hover { background: var(--nex-border-hi); }
+
+  /* Range sliders no estilo NEX */
+  input.nex-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--nex-border);
+    border-radius: 2px;
+    outline: none;
+  }
+  input.nex-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--nex-cyan);
+    cursor: pointer;
+    box-shadow: 0 0 0 3px var(--nex-cyan-dim), 0 0 8px var(--nex-cyan-dim);
+    border: 2px solid var(--nex-bg);
+  }
+  input.nex-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--nex-cyan);
+    cursor: pointer;
+    border: 2px solid var(--nex-bg);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .nex-pulse { animation: pulse 2s infinite; }
+
+  /* Inputs base — color-scheme acompanha o tema */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  textarea,
+  select {
+    color-scheme: inherit;
+  }
+}
+
+@layer utilities {
+  .text-currency {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--nex-border) transparent;
+  }
+}
