@@ -206,6 +206,7 @@ export interface ProductVariation {
   modelFileKey?: string
   modelFileUrl?: string
   modelFormat?: string
+  sellingPrice?: number
   stockQuantity: number
   minStockAlert?: number
   isActive: boolean
@@ -233,6 +234,23 @@ export interface ProductKitItem {
   }
 }
 
+export interface ProductChannelPrice {
+  id: string
+  productId: string
+  channelId: string
+  price: number
+  channel?: {
+    id: string
+    name: string
+    commissionPercent?: number
+    feeFixed?: number
+    feePercentVariable?: number
+    isActive: boolean
+  }
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -256,6 +274,7 @@ export interface Product {
   stockQuantity: number
   minStockAlert?: number
   sellingPrice?: number
+  channelPrices?: ProductChannelPrice[]
   variations?: ProductVariation[]
   isActive: boolean
   deletedAt?: string
@@ -333,7 +352,11 @@ export interface ProductionJob {
   customerId: string
   customer?: { id: string; name: string }
   productId: string
-  product?: { id: string; name: string }
+  product?: {
+    id: string
+    name: string
+    channelPrices?: ProductChannelPrice[]
+  }
   equipmentId?: string
   equipment?: { id: string; name: string }
   materialStockId?: string

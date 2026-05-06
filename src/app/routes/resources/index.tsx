@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Card, Pill, Bar, Icon, Icons, Money, NEX, EQUIPMENT_STATUS, Btn } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DecimalRtlInput } from '@/components/ui/decimal-rtl-input'
 import { equipmentService, materialsService, accessoriesService, domainService, suppliersService } from '@/services/entities.service'
-import type { Equipment, Material, MaterialStock, Accessory, FilamentType, Brand, MaterialCategory, AccessoryCategory, Unit, Supplier } from '@/types/api.types'
+import type { Equipment, Material, MaterialStock, Accessory, FilamentType, Brand, MaterialCategory, AccessoryCategory, Unit, Supplier, Color } from '@/types/api.types'
 
 type Tab = 'equipment' | 'materials' | 'accessories'
 const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
@@ -28,14 +29,35 @@ function isPurchaseModeOption(value: string): value is PurchaseModeOption {
 }
 
 export function ResourcesPage() {
-  const [tab, setTab] = useState<Tab>('equipment')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const parsedTab: Tab = tabParam === 'materials' || tabParam === 'accessories' || tabParam === 'equipment'
+    ? tabParam
+    : 'equipment'
+
+  const [tab, setTab] = useState<Tab>(parsedTab)
+
+  useEffect(() => {
+    if (parsedTab !== tab) setTab(parsedTab)
+  }, [parsedTab, tab])
+
+  const changeTab = (nextTab: Tab) => {
+    setTab(nextTab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', nextTab)
+    next.delete('equipmentId')
+    next.delete('materialId')
+    next.delete('accessoryId')
+    setSearchParams(next, { replace: true })
+  }
+
   return (
     <div className="px-8 py-6 space-y-5">
       <div className="flex items-center gap-1 p-1 rounded-md w-fit" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
         {TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => changeTab(t.id)}
             className="px-3 py-1.5 rounded text-[12px] font-medium flex items-center gap-1.5 transition-all"
             style={{
               background: tab === t.id ? NEX.cyanDim : 'transparent',
@@ -48,15 +70,15 @@ export function ResourcesPage() {
         ))}
       </div>
 
-      {tab === 'equipment'   && <EquipmentTab />}
-      {tab === 'materials'   && <RawMaterialsTab />}
-      {tab === 'accessories' && <AccessoriesTab />}
+      {tab === 'equipment'   && <EquipmentTab focusEquipmentId={searchParams.get('equipmentId') ?? undefined} />}
+      {tab === 'materials'   && <RawMaterialsTab focusMaterialId={searchParams.get('materialId') ?? undefined} />}
+      {tab === 'accessories' && <AccessoriesTab focusAccessoryId={searchParams.get('accessoryId') ?? undefined} />}
     </div>
   )
 }
 
 /* ─── Equipment ──────────────────────────────────────────── */
-function EquipmentTab() {
+function EquipmentTab({ focusEquipmentId }: { focusEquipmentId?: string }) {
   const queryClient = useQueryClient()
   const { data: res } = useQuery({
     queryKey: ['equipment', 'list', 'full'],
@@ -138,6 +160,12 @@ function EquipmentTab() {
     setStatus(equipment.status)
     setNotes(equipment.notes ?? '')
   }
+
+  useEffect(() => {
+    if (!focusEquipmentId || list.length === 0 || editingId === focusEquipmentId) return
+    const target = list.find((item) => item.id === focusEquipmentId)
+    if (target) startEdit(target)
+  }, [focusEquipmentId, list, editingId])
 
   const buildPayload = () => {
     const payload: {
@@ -423,7 +451,7 @@ function ResourceField({ label, children }: { label: string; children: React.Rea
 }
 
 /* ─── Raw Materials ──────────────────────────────────────── */
-function RawMaterialsTab() {
+function RawMaterialsTab({ focusMaterialId }: { focusMaterialId?: string }) {
   const queryClient = useQueryClient()
   const { data: res } = useQuery({
     queryKey: ['materials', 'list', 'full'],
@@ -444,6 +472,12 @@ function RawMaterialsTab() {
     queryFn: () => domainService.getBrands(),
   })
   const brands: Brand[] = brandsRes
+
+  const { data: colorsRes = [] } = useQuery({
+    queryKey: ['domain', 'colors', 'material-stocks'],
+    queryFn: () => domainService.getColors(),
+  })
+  const colors: Color[] = colorsRes.filter((color) => color.isActive)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Material | null>(null)
@@ -466,6 +500,9 @@ function RawMaterialsTab() {
   const [stockStatus, setStockStatus] = useState<MaterialStock['status']>('SEALED')
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10))
   const [openedDate, setOpenedDate] = useState('')
+  const [color1Id, setColor1Id] = useState('')
+  const [color2Id, setColor2Id] = useState('')
+  const [color3Id, setColor3Id] = useState('')
 
   useEffect(() => {
     if (!filamentTypeId) return
@@ -517,6 +554,9 @@ function RawMaterialsTab() {
     setStockStatus('SEALED')
     setPurchaseDate(new Date().toISOString().slice(0, 10))
     setOpenedDate('')
+    setColor1Id('')
+    setColor2Id('')
+    setColor3Id('')
   }
 
   const selectStockMaterial = (material: Material) => {
@@ -553,6 +593,12 @@ function RawMaterialsTab() {
     setDensityKgM3(material.densityKgM3 != null ? String(material.densityKgM3) : '')
     setNotes(material.notes ?? '')
   }
+
+  useEffect(() => {
+    if (!focusMaterialId || materials.length === 0 || editingId === focusMaterialId) return
+    const target = materials.find((item) => item.id === focusMaterialId)
+    if (target) startEdit(target)
+  }, [focusMaterialId, materials, editingId])
 
   const buildPayload = () => {
     const payload: {
@@ -633,16 +679,39 @@ function RawMaterialsTab() {
     setStockStatus(stock.status)
     setOpenedDate(stock.openedDate ? stock.openedDate.slice(0, 10) : '')
     setPurchaseDate(new Date().toISOString().slice(0, 10))
+    setColor1Id(stock.color1Id ?? '')
+    setColor2Id(stock.color2Id ?? '')
+    setColor3Id(stock.color3Id ?? '')
   }
 
-  const buildCreateStockPayload = () => ({
-    initialWeightG: Math.max(1, parseOptionalInt(initialWeightG) ?? 1),
-    costPerKg: Math.max(0, costPerKg || 0),
-    lotNumber: lotNumber.trim() || undefined,
-    purchaseDate: purchaseDate || undefined,
-    openedDate: openedDate || undefined,
-    status: stockStatus,
-  })
+  const buildCreateStockPayload = () => {
+    const payload: {
+      initialWeightG: number
+      costPerKg: number
+      lotNumber?: string
+      purchaseDate?: string
+      openedDate?: string
+      status: MaterialStock['status']
+      color1Id?: string
+      color2Id?: string
+      color3Id?: string
+    } = {
+      initialWeightG: Math.max(1, parseOptionalInt(initialWeightG) ?? 1),
+      costPerKg: Math.max(0, costPerKg || 0),
+      lotNumber: lotNumber.trim() || undefined,
+      purchaseDate: purchaseDate || undefined,
+      openedDate: openedDate || undefined,
+      status: stockStatus,
+    }
+
+    if (selectedStockMaterial?.materialType === 'FILAMENT') {
+      payload.color1Id = color1Id || undefined
+      payload.color2Id = color2Id || undefined
+      payload.color3Id = color3Id || undefined
+    }
+
+    return payload
+  }
 
   const buildUpdateStockPayload = () => {
     const payload: {
@@ -651,6 +720,9 @@ function RawMaterialsTab() {
       costPerKg: number
       lotNumber?: string
       openedDate?: string
+      color1Id?: string | null
+      color2Id?: string | null
+      color3Id?: string | null
     } = {
       status: stockStatus,
       currentWeightG: Math.max(0, parseOptionalInt(currentWeightG) ?? 0),
@@ -659,6 +731,12 @@ function RawMaterialsTab() {
 
     if (lotNumber.trim()) payload.lotNumber = lotNumber.trim()
     if (openedDate) payload.openedDate = openedDate
+
+    if (selectedStockMaterial?.materialType === 'FILAMENT') {
+      payload.color1Id = color1Id || null
+      payload.color2Id = color2Id || null
+      payload.color3Id = color3Id || null
+    }
 
     return payload
   }
@@ -694,14 +772,28 @@ function RawMaterialsTab() {
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao encerrar recipiente')),
   })
 
+  const selectedStockColorIds = [color1Id, color2Id, color3Id].filter((id): id is string => !!id)
+  const hasDuplicateStockColors = new Set(selectedStockColorIds).size !== selectedStockColorIds.length
+
   const canSubmitStock = !!stockMaterialId && (
     editingStockId
       ? Number.isFinite(Number(currentWeightG)) && Number(currentWeightG) >= 0
       : Number.isFinite(Number(initialWeightG)) && Number(initialWeightG) > 0
-  )
+  ) && (selectedStockMaterial?.materialType !== 'FILAMENT' || (!!color1Id && !hasDuplicateStockColors))
 
   const submitStock = () => {
     if (!stockMaterialId || !canSubmitStock) return
+
+    if (selectedStockMaterial?.materialType === 'FILAMENT' && !color1Id) {
+      toast.error('Selecione a cor principal da bobina.')
+      return
+    }
+
+    if (selectedStockMaterial?.materialType === 'FILAMENT' && hasDuplicateStockColors) {
+      toast.error('As cores da bobina devem ser diferentes entre si.')
+      return
+    }
+
     saveStock.mutate({ materialId: stockMaterialId, stockId: editingStockId ?? undefined })
   }
 
@@ -931,6 +1023,64 @@ function RawMaterialsTab() {
                   </ResourceField>
                 </div>
 
+                {selectedStockMaterial.materialType === 'FILAMENT' && (
+                  <>
+                    <div className="text-[11px]" style={{ color: NEX.textDim }}>
+                      Cores da bobina
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <ResourceField label="Cor principal *">
+                        <select value={color1Id} onChange={(e) => setColor1Id(e.target.value)} className={resourceInputCls}>
+                          <option value="">Selecione...</option>
+                          {colors.map((color) => (
+                            <option
+                              key={color.id}
+                              value={color.id}
+                              disabled={color.id !== color1Id && (color.id === color2Id || color.id === color3Id)}
+                            >
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ResourceField>
+                      <ResourceField label="Cor secundária">
+                        <select value={color2Id} onChange={(e) => setColor2Id(e.target.value)} className={resourceInputCls}>
+                          <option value="">Opcional</option>
+                          {colors.map((color) => (
+                            <option
+                              key={color.id}
+                              value={color.id}
+                              disabled={color.id !== color2Id && (color.id === color1Id || color.id === color3Id)}
+                            >
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ResourceField>
+                      <ResourceField label="Cor terciária">
+                        <select value={color3Id} onChange={(e) => setColor3Id(e.target.value)} className={resourceInputCls}>
+                          <option value="">Opcional</option>
+                          {colors.map((color) => (
+                            <option
+                              key={color.id}
+                              value={color.id}
+                              disabled={color.id !== color3Id && (color.id === color1Id || color.id === color2Id)}
+                            >
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ResourceField>
+                    </div>
+
+                    {hasDuplicateStockColors && (
+                      <div className="text-[11px]" style={{ color: NEX.red }}>
+                        Não repita a mesma cor entre principal, secundária e terciária.
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <div className="flex gap-2">
                   {editingStockId && (
                     <Btn kind="ghost" size="md" className="flex-1 justify-center" onClick={() => resetStockForm(selectedStockMaterial)}>
@@ -964,6 +1114,9 @@ function RawMaterialsTab() {
                       <thead>
                         <tr style={{ borderTop: `1px solid ${NEX.border}` }}>
                           <th className="py-2 text-left font-medium" style={{ color: NEX.textDim }}>Recipiente</th>
+                          {selectedStockMaterial.materialType === 'FILAMENT' && (
+                            <th className="py-2 text-left font-medium" style={{ color: NEX.textDim }}>Cor(es)</th>
+                          )}
                           <th className="py-2 text-left font-medium" style={{ color: NEX.textDim }}>Status</th>
                           <th className="py-2 text-left font-medium" style={{ color: NEX.textDim }}>Peso / nível</th>
                           <th className="py-2 text-left font-medium" style={{ color: NEX.textDim }}>Custo/kg</th>
@@ -986,6 +1139,34 @@ function RawMaterialsTab() {
                               <td className="py-2">
                                 {stock.lotNumber ?? `${selectedStockMaterial.materialType === 'FILAMENT' ? 'Bobina' : 'Pote'} ${stock.id.slice(0, 8)}`}
                               </td>
+                              {selectedStockMaterial.materialType === 'FILAMENT' && (
+                                <td className="py-2">
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {[stock.color1, stock.color2, stock.color3]
+                                      .filter((color): color is NonNullable<typeof color> => !!color)
+                                      .map((color) => (
+                                        <span
+                                          key={color.id}
+                                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px]"
+                                          style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, color: NEX.textDim }}
+                                        >
+                                          <span
+                                            className="h-2 w-2 rounded-full"
+                                            style={{
+                                              background: color.isRainbow
+                                                ? 'linear-gradient(90deg,#ff5c7a,#ffb547,#5eff8a,#00d9ff,#a78bfa)'
+                                                : (color.hexCode || NEX.borderHi),
+                                            }}
+                                          />
+                                          {color.name}
+                                        </span>
+                                      ))}
+                                    {!stock.color1 && !stock.color2 && !stock.color3 && (
+                                      <span style={{ color: NEX.textMute }}>—</span>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                               <td className="py-2">
                                 <div className="flex items-center gap-1">
                                   <Pill tone={stock.status === 'IN_USE' ? 'cyan' : stock.status === 'EMPTY' ? 'red' : 'default'}>
@@ -1076,7 +1257,7 @@ function RawMaterialsTab() {
 }
 
 /* ─── Accessories ────────────────────────────────────────── */
-function AccessoriesTab() {
+function AccessoriesTab({ focusAccessoryId }: { focusAccessoryId?: string }) {
   const queryClient = useQueryClient()
   const { data: res } = useQuery({
     queryKey: ['accessories', 'list', 'full'],
@@ -1155,6 +1336,12 @@ function AccessoriesTab() {
     setStockQuantity(String(Number(accessory.stockQuantity) || 0))
     setMinStockAlert(accessory.minStockAlert != null ? String(Number(accessory.minStockAlert)) : '0')
   }
+
+  useEffect(() => {
+    if (!focusAccessoryId || list.length === 0 || editingId === focusAccessoryId) return
+    const target = list.find((item) => item.id === focusAccessoryId)
+    if (target) startEdit(target)
+  }, [focusAccessoryId, list, editingId])
 
   const buildPayload = () => {
     const payload: {

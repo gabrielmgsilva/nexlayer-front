@@ -1,11 +1,12 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Card, Pill, Btn, Money, Icon, Icons, NEX, ProductThumb, Bar } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DecimalRtlInput } from '@/components/ui/decimal-rtl-input'
-import { categoriesService, domainService, productsService } from '@/services/entities.service'
-import type { Category, Color, CostSnapshot, Product, ProductVariation } from '@/types/api.types'
+import { categoriesService, domainService, productsService, salesChannelService } from '@/services/entities.service'
+import type { Category, Color, CostSnapshot, Product, ProductVariation, SalesChannel } from '@/types/api.types'
 
 type Filter = 'all' | 'kit' | 'low' | 'inactive'
 type ProductPrintFile = Product['printFiles'][number]
@@ -52,6 +53,7 @@ function parseOptionalNumber(value: string) {
 
 export function ProductsPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null)
@@ -71,6 +73,7 @@ export function ProductsPage() {
   const [stockQuantity, setStockQuantity] = useState('0')
   const [minStockAlert, setMinStockAlert] = useState('')
   const [sellingPrice, setSellingPrice] = useState(0)
+  const [channelPrices, setChannelPrices] = useState<Record<string, number>>({})
   const [isActive, setIsActive] = useState(true)
   const [kitItems, setKitItems] = useState<KitItemForm[]>([])
 
@@ -79,6 +82,7 @@ export function ProductsPage() {
     queryFn: () => productsService.findAll({ limit: 200 }),
   })
   const all: Product[] = res?.data ?? []
+  const focusEditId = searchParams.get('edit') ?? ''
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'list', 'active', 'products'],
@@ -93,6 +97,11 @@ export function ProductsPage() {
   const { data: colors = [] } = useQuery({
     queryKey: ['domain', 'colors', 'products'],
     queryFn: () => domainService.getColors(),
+  })
+
+  const { data: salesChannels = [] } = useQuery({
+    queryKey: ['sales', 'channels', 'products-pricing'],
+    queryFn: () => salesChannelService.findAll({ includeInactive: true }),
   })
 
   const selectableKitProducts = useMemo(
@@ -124,6 +133,7 @@ export function ProductsPage() {
     setStockQuantity('0')
     setMinStockAlert('')
     setSellingPrice(0)
+    setChannelPrices({})
     setIsActive(true)
     setKitItems([])
   }
@@ -145,12 +155,28 @@ export function ProductsPage() {
     setStockQuantity(String(product.stockQuantity ?? 0))
     setMinStockAlert(product.minStockAlert != null ? String(product.minStockAlert) : '')
     setSellingPrice(Number(product.sellingPrice) || 0)
+    const nextChannelPrices: Record<string, number> = {}
+    for (const entry of product.channelPrices ?? []) {
+      nextChannelPrices[entry.channelId] = Number(entry.price) || 0
+    }
+    setChannelPrices(nextChannelPrices)
     setIsActive(product.isActive)
     setKitItems((product.kitItems ?? []).map((item) => ({
       productId: item.productId,
       quantity: String(item.quantity),
     })))
   }
+
+  useEffect(() => {
+    if (!focusEditId || all.length === 0) return
+    const target = all.find((item) => item.id === focusEditId)
+    if (!target) return
+    startEdit(target)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('edit')
+    setSearchParams(next, { replace: true })
+  }, [focusEditId, all, searchParams, setSearchParams])
 
   const save = useMutation({
     mutationFn: (payload: { id?: string; data: Record<string, unknown> }) =>
@@ -214,6 +240,13 @@ export function ProductsPage() {
       isActive,
       stockQuantity: Math.max(0, parseOptionalInt(stockQuantity) ?? 0),
       sellingPrice: Math.max(0, sellingPrice || 0),
+    }
+
+    if (salesChannels.length > 0) {
+      payload.channelPrices = salesChannels.map((channel) => ({
+        channelId: channel.id,
+        price: Math.max(0, Number(channelPrices[channel.id] ?? sellingPrice ?? 0) || 0),
+      }))
     }
 
     if (sku.trim()) payload.sku = sku.trim()
@@ -379,6 +412,42 @@ export function ProductsPage() {
             <FormField label="Preço de venda (R$)">
               <DecimalRtlInput value={sellingPrice} onValueChange={setSellingPrice} min={0} className={inputCls + ' text-right tabular-nums'} />
             </FormField>
+
+            <div className="rounded-md p-2.5" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}` }}>
+              <div className="text-[11px] font-medium mb-2" style={{ color: NEX.textDim }}>
+                Preço por canal de venda
+              </div>
+
+              {salesChannels.length === 0 ? (
+                <div className="text-[11px]" style={{ color: NEX.textMute }}>
+                  Cadastre canais em Configurações para definir preços específicos.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {salesChannels.map((channel: SalesChannel) => (
+                    <div key={channel.id} className="grid grid-cols-[1fr_140px] gap-2 items-center">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="text-[11.5px] font-medium truncate">{channel.name}</span>
+                        <Pill tone={channel.isActive ? 'green' : 'default'}>
+                          {channel.isActive ? 'Ativo' : 'Inativo'}
+                        </Pill>
+                      </div>
+                      <DecimalRtlInput
+                        value={Number(channelPrices[channel.id] ?? sellingPrice ?? 0)}
+                        onValueChange={(next) => {
+                          setChannelPrices((prev) => ({
+                            ...prev,
+                            [channel.id]: Math.max(0, Number(next) || 0),
+                          }))
+                        }}
+                        min={0}
+                        className={inputCls + ' text-right tabular-nums'}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="rounded-md px-3 py-2" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}` }}>
               <label className="inline-flex items-center gap-2 text-[12px]">
@@ -684,6 +753,8 @@ function ProductDetails({
   const [variationName, setVariationName] = useState('')
   const [variationSku, setVariationSku] = useState('')
   const [variationColorId, setVariationColorId] = useState('')
+  const [variationHasSellingPrice, setVariationHasSellingPrice] = useState(false)
+  const [variationSellingPrice, setVariationSellingPrice] = useState(0)
   const [variationStockQuantity, setVariationStockQuantity] = useState('0')
   const [variationMinStockAlert, setVariationMinStockAlert] = useState('')
   const [variationSortOrder, setVariationSortOrder] = useState('0')
@@ -757,6 +828,8 @@ function ProductDetails({
     setVariationName('')
     setVariationSku('')
     setVariationColorId('')
+    setVariationHasSellingPrice(false)
+    setVariationSellingPrice(0)
     setVariationStockQuantity('0')
     setVariationMinStockAlert('')
     setVariationSortOrder('0')
@@ -769,6 +842,8 @@ function ProductDetails({
     setVariationName(variation.name)
     setVariationSku(variation.sku ?? '')
     setVariationColorId(variation.colorId ?? '')
+    setVariationHasSellingPrice(variation.sellingPrice != null)
+    setVariationSellingPrice(variation.sellingPrice != null ? Number(variation.sellingPrice) : 0)
     setVariationStockQuantity(String(variation.stockQuantity ?? 0))
     setVariationMinStockAlert(variation.minStockAlert != null ? String(variation.minStockAlert) : '')
     setVariationSortOrder(String(variation.sortOrder ?? 0))
@@ -791,6 +866,12 @@ function ProductDetails({
 
     if (variationSku.trim()) payload.sku = variationSku.trim()
     if (variationColorId) payload.colorId = variationColorId
+
+    if (variationHasSellingPrice) {
+      payload.sellingPrice = Math.max(0, Number(variationSellingPrice) || 0)
+    } else if (variationEditingId) {
+      payload.sellingPrice = null
+    }
 
     const nextVariationMinAlert = parseOptionalInt(variationMinStockAlert)
     if (nextVariationMinAlert !== undefined) payload.minStockAlert = Math.max(0, nextVariationMinAlert)
@@ -859,6 +940,11 @@ function ProductDetails({
   }
 
   const variations = product.variations ?? []
+  const sortedChannelPrices = [...(product.channelPrices ?? [])].sort((a, b) => {
+    const nameA = a.channel?.name ?? ''
+    const nameB = b.channel?.name ?? ''
+    return nameA.localeCompare(nameB)
+  })
   const photos = product.photos ?? []
   const printFiles = product.printFiles ?? []
 
@@ -903,6 +989,24 @@ function ProductDetails({
         ) : (
           <div className="py-2 text-[12px]" style={{ color: NEX.textMute }}>Sem snapshot — calcule este produto na calculadora.</div>
         )}
+
+        {sortedChannelPrices.length > 0 && (
+          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${NEX.border}` }}>
+            <div className="text-[10.5px] uppercase tracking-wider font-semibold mb-2" style={{ color: NEX.textMute }}>
+              Preços por canal
+            </div>
+            <div className="space-y-1.5 text-[12px]">
+              {sortedChannelPrices.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate" style={{ color: NEX.textDim }}>
+                    {entry.channel?.name ?? 'Canal'}
+                  </span>
+                  <span className="font-semibold"><Money value={Number(entry.price)} /></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card>
@@ -942,6 +1046,12 @@ function ProductDetails({
                           <Bar value={Math.min(100, variation.stockQuantity * 5)} tone={variationLow ? 'amber' : 'green'} height={3} />
                         </div>
                       </div>
+                      <div className="mt-1 text-[10.5px]" style={{ color: NEX.textMute }}>
+                        Preço:{' '}
+                        {variation.sellingPrice != null
+                          ? <span className="font-semibold" style={{ color: NEX.text }}><Money value={variation.sellingPrice} /></span>
+                          : 'usa preço base do produto'}
+                      </div>
                       <div className="mt-2 flex justify-end gap-3 text-[11px]">
                         <button onClick={() => startEditVariation(variation)} style={{ color: NEX.cyan }}>Alterar</button>
                         <button onClick={() => setPendingDeleteVariation(variation)} style={{ color: NEX.red }}>Excluir</button>
@@ -958,36 +1068,74 @@ function ProductDetails({
               </div>
 
               <div className="space-y-1.5">
-                <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                <div className="text-[10.5px]" style={{ color: NEX.textMute }}>
+                  Campos com * são obrigatórios.
+                </div>
+
+                <FormField label="Nome da variação" required>
                   <input
                     value={variationName}
                     onChange={(e) => setVariationName(e.target.value)}
                     className={inputCls}
-                    placeholder="Nome da variação"
+                    placeholder="Ex.: Azul Fosco"
                   />
-                </div>
+                </FormField>
 
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                  <FormField label="SKU (opcional)">
                     <input
                       value={variationSku}
                       onChange={(e) => setVariationSku(e.target.value)}
                       className={inputCls + ' font-mono'}
-                      placeholder="SKU"
+                      placeholder="Ex.: PROD-001-AZ"
                     />
-                  </div>
-                  <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                  </FormField>
+                  <FormField label="Cor (opcional)">
                     <select value={variationColorId} onChange={(e) => setVariationColorId(e.target.value)} className={inputCls}>
-                      <option value="">Cor opcional...</option>
+                      <option value="">Selecionar cor...</option>
                       {colors.map((color) => (
                         <option key={color.id} value={color.id}>{color.name}</option>
                       ))}
                     </select>
-                  </div>
+                  </FormField>
+                </div>
+
+                <div className="rounded-md px-3 py-2" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}` }}>
+                  <label className="inline-flex items-center gap-2 text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={variationHasSellingPrice}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        setVariationHasSellingPrice(checked)
+                        if (checked && variationSellingPrice <= 0 && product.sellingPrice != null) {
+                          setVariationSellingPrice(Number(product.sellingPrice) || 0)
+                        }
+                      }}
+                    />
+                    <span>Usar preço próprio para esta variação</span>
+                  </label>
+
+                  {variationHasSellingPrice ? (
+                    <div className="mt-2">
+                      <FormField label="Preço da variação (R$)">
+                        <DecimalRtlInput
+                          value={variationSellingPrice}
+                          onValueChange={(next) => setVariationSellingPrice(Math.max(0, next))}
+                          min={0}
+                          className={inputCls + ' text-right tabular-nums'}
+                        />
+                      </FormField>
+                    </div>
+                  ) : (
+                    <div className="text-[10.5px] mt-1" style={{ color: NEX.textMute }}>
+                      Sem preço próprio: a variação usa o preço base do produto.
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-1.5">
-                  <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                  <FormField label="Estoque inicial">
                     <input
                       type="number"
                       min={0}
@@ -995,10 +1143,10 @@ function ProductDetails({
                       value={variationStockQuantity}
                       onChange={(e) => setVariationStockQuantity(e.target.value)}
                       className={inputCls + ' text-right tabular-nums'}
-                      placeholder="Estoque"
+                      placeholder="0"
                     />
-                  </div>
-                  <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                  </FormField>
+                  <FormField label="Alerta mínimo">
                     <input
                       type="number"
                       min={0}
@@ -1006,10 +1154,10 @@ function ProductDetails({
                       value={variationMinStockAlert}
                       onChange={(e) => setVariationMinStockAlert(e.target.value)}
                       className={inputCls + ' text-right tabular-nums'}
-                      placeholder="Mínimo"
+                      placeholder="Opcional"
                     />
-                  </div>
-                  <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                  </FormField>
+                  <FormField label="Ordem de exibição">
                     <input
                       type="number"
                       min={0}
@@ -1017,20 +1165,20 @@ function ProductDetails({
                       value={variationSortOrder}
                       onChange={(e) => setVariationSortOrder(e.target.value)}
                       className={inputCls + ' text-right tabular-nums'}
-                      placeholder="Ordem"
+                      placeholder="0"
                     />
-                  </div>
+                  </FormField>
                 </div>
 
-                <div style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                <FormField label="Observações (opcional)">
                   <textarea
                     rows={2}
                     value={variationNotes}
                     onChange={(e) => setVariationNotes(e.target.value)}
                     className={inputCls + ' h-auto py-2'}
-                    placeholder="Observações"
+                    placeholder="Detalhes internos desta variação"
                   />
-                </div>
+                </FormField>
 
                 <label className="inline-flex items-center gap-2 text-[11px]">
                   <input type="checkbox" checked={variationIsActive} onChange={(e) => setVariationIsActive(e.target.checked)} />

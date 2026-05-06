@@ -1,5 +1,5 @@
 import { api, unwrap } from './api'
-import type { ProductionJob, CostSnapshot } from '@/types/api.types'
+import type { ProductionJob, CostSnapshot, ProductChannelPrice } from '@/types/api.types'
 
 export const jobsService = {
   findAll: (params?: { status?: string; customerId?: string; productId?: string; statusGroup?: 'active' | 'finished' }) =>
@@ -62,7 +62,7 @@ export interface QueueJob {
   dueDate: string | null
   equipmentId: string | null
   customer: { id: string; name: string } | null
-  product: { id: string; name: string }
+  product: { id: string; name: string; channelPrices?: ProductChannelPrice[] }
   equipment: { id: string; name: string } | null
   costSnapshots: Array<{
     unitSalePrice: string | number

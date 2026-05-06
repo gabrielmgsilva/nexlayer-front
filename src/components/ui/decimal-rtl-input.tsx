@@ -64,9 +64,9 @@ export const DecimalRtlInput = forwardRef<HTMLInputElement, DecimalRtlInputProps
           }}
           className={cn(
             'w-full h-9 px-3 bg-transparent text-[13px] focus:outline-none text-right tabular-nums',
+            className,
             prefix && 'pl-10',
             suffix && 'pr-8',
-            className,
           )}
           {...rest}
         />

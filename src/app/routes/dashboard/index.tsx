@@ -86,6 +86,16 @@ export function DashboardPage() {
   const printingCount = equipmentList.filter((e) => e.status === 'PRINTING').length
   const totalAlerts = filamentLow.length + accessoryLow.length + productLow.length
 
+  const openResource = (
+    tab: 'equipment' | 'materials' | 'accessories',
+    idKey: 'equipmentId' | 'materialId' | 'accessoryId',
+    id: string,
+  ) => {
+    const params = new URLSearchParams({ tab })
+    params.set(idKey, id)
+    navigate(`/resources?${params.toString()}`)
+  }
+
   return (
     <div className="px-8 py-6 space-y-5">
       <div className="grid grid-cols-4 gap-4">
@@ -144,8 +154,9 @@ export function DashboardPage() {
                   return (
                     <div
                       key={j.id}
-                      className="px-4 py-3 flex items-center gap-4 hover:bg-[#11161E] transition-colors"
+                      className="px-4 py-3 flex items-center gap-4 hover:bg-[#11161E] transition-colors cursor-pointer"
                       style={{ borderTop: `1px solid ${NEX.border}` }}
+                      onClick={() => navigate(`/production?view=table&job=${j.id}&source=dashboard`)}
                     >
                       <div
                         className="h-9 w-9 rounded-md flex items-center justify-center flex-shrink-0"
@@ -236,13 +247,18 @@ export function DashboardPage() {
                 </div>
                 <div className="space-y-1.5">
                   {productLow.slice(0, 6).map((v) => (
-                    <div key={v.id} className="flex items-center gap-2 text-[11.5px]">
+                    <button
+                      key={v.id}
+                      type="button"
+                      className="w-full flex items-center gap-2 text-[11.5px] text-left hover:opacity-90"
+                      onClick={() => navigate(`/products?edit=${v.id}`)}
+                    >
                       <ProductThumb id={v.id} name={v.name} size={18} />
                       <span className="flex-1 truncate font-medium">{v.name}</span>
                       <span className="font-mono font-semibold" style={{ color: v.current === 0 ? NEX.red : NEX.amber }}>
                         {v.current}/{v.minimum}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -253,13 +269,18 @@ export function DashboardPage() {
                 <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: NEX.textMute }}>Materiais</div>
                 <div className="space-y-1.5">
                   {filamentLow.slice(0, 6).map((f) => (
-                    <div key={f.id} className="flex items-center gap-2 text-[11.5px]">
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full flex items-center gap-2 text-[11.5px] text-left hover:opacity-90"
+                      onClick={() => openResource('materials', 'materialId', f.id)}
+                    >
                       <FilamentDot color={NEX.cyan} />
                       <span className="flex-1 truncate font-medium">{f.name}</span>
                       <span className="font-mono font-semibold" style={{ color: NEX.amber }}>
                         {f.current.toFixed(1)}/{f.minimum.toFixed(1)} kg
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -270,13 +291,18 @@ export function DashboardPage() {
                 <div className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: NEX.textMute }}>Acessórios</div>
                 <div className="space-y-1.5">
                   {accessoryLow.slice(0, 6).map((a) => (
-                    <div key={a.id} className="flex items-center gap-2 text-[11.5px]">
+                    <button
+                      key={a.id}
+                      type="button"
+                      className="w-full flex items-center gap-2 text-[11.5px] text-left hover:opacity-90"
+                      onClick={() => openResource('accessories', 'accessoryId', a.id)}
+                    >
                       <Icon d={Icons.pkg} size={11} className="opacity-60" />
                       <span className="flex-1 truncate font-medium">{a.name}</span>
                       <span className="font-mono font-semibold" style={{ color: NEX.amber }}>
                         {a.current}/{a.minimum}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -301,7 +327,12 @@ export function DashboardPage() {
                 const tone = lifePct >= 95 ? 'red' : lifePct >= 85 ? 'amber' : lifePct >= 70 ? 'cyan' : 'green'
                 const st = EQUIPMENT_STATUS[e.status] ?? EQUIPMENT_STATUS.AVAILABLE
                 return (
-                  <div key={e.id} className="flex items-center gap-2.5">
+                  <button
+                    key={e.id}
+                    type="button"
+                    className="w-full flex items-center gap-2.5 text-left hover:opacity-90"
+                    onClick={() => openResource('equipment', 'equipmentId', e.id)}
+                  >
                     <div
                       className={`h-2 w-2 rounded-full flex-shrink-0 ${e.status === 'PRINTING' ? 'nex-pulse' : ''}`}
                       style={{ background: st.tone === 'default' ? NEX.textMute : NEX[st.tone] }}
@@ -311,7 +342,7 @@ export function DashboardPage() {
                       {lifePct.toFixed(0)}%
                     </span>
                     <div className="w-14"><Bar value={lifePct} tone={tone} height={3} /></div>
-                  </div>
+                  </button>
                 )
               })}
               {equipmentList.length === 0 && (

@@ -230,7 +230,17 @@ export function SaleDetailPage() {
                           <span className="font-semibold" style={{ color: NEX.amber }}>Aguardando produção</span>
                         </span>
                         <button
-                          onClick={() => navigate(`/calculator?productId=${item.productId}&qty=${item.quantity}&order=${sale.orderNumber}`)}
+                          onClick={() => {
+                            const params = new URLSearchParams({
+                              productId: item.productId,
+                              qty: String(item.quantity),
+                              order: sale.orderNumber,
+                              saleId: sale.id,
+                              saleItemId: item.id,
+                            })
+                            if (sale.customerId) params.set('customerId', sale.customerId)
+                            navigate(`/calculator?${params.toString()}`)
+                          }}
                           className="ml-auto text-[11px] font-medium px-2 py-1 rounded-md"
                           style={{ background: NEX.cyan, color: '#001F26' }}
                         >
@@ -317,13 +327,21 @@ function NewSaleDrawer({ onClose }: { onClose: () => void }) {
   const products = productsRes?.data ?? []
   const product = products.find((p) => p.id === productId)
   const variations = product?.variations ?? []
+  const selectedVariation = variations.find((v) => v.id === variationId)
 
-  // Default unit price from product
+  // Default unit price from selected variation (fallback to product)
   useEffect(() => {
-    if (product?.sellingPrice && !unitPrice) {
-      setUnitPrice(Number(product.sellingPrice))
+    if (!productId) return
+
+    if (selectedVariation?.sellingPrice != null) {
+      setUnitPrice(Number(selectedVariation.sellingPrice) || 0)
+      return
     }
-  }, [product, unitPrice])
+
+    if (product?.sellingPrice != null) {
+      setUnitPrice(Number(product.sellingPrice) || 0)
+    }
+  }, [productId, product?.sellingPrice, selectedVariation?.sellingPrice])
 
   // Default channel
   useEffect(() => {
@@ -390,7 +408,11 @@ function NewSaleDrawer({ onClose }: { onClose: () => void }) {
             <Field label="Variação">
               <select value={variationId} onChange={(e) => setVariationId(e.target.value)} className={inputCls}>
                 <option value="">— sem variação —</option>
-                {variations.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                {variations.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}{v.sellingPrice != null ? ` - R$ ${Number(v.sellingPrice).toFixed(2)}` : ''}
+                  </option>
+                ))}
               </select>
             </Field>
           )}
