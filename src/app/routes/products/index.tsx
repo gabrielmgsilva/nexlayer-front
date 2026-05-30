@@ -669,9 +669,10 @@ function ProductRow({
           <div className="flex items-center gap-3">
             <ProductThumb id={product.id} name={product.name} photoUrl={primaryPhoto} size={36} />
             <div>
-              <div className="font-semibold flex items-center gap-2">
+              <div className="font-semibold flex items-center gap-2 flex-wrap">
                 {product.name}
                 {!product.isActive && <Pill tone="default">Inativo</Pill>}
+                {product.pricingTemplateId && <Pill tone="violet">Template: {product.pricingTemplate?.name ?? '—'}</Pill>}
               </div>
               {product.sku && <div className="text-[10.5px] font-mono" style={{ color: NEX.textMute }}>{product.sku}</div>}
             </div>

@@ -12,6 +12,7 @@ import type {
   PrintFailure, PrintFailureAnalytics, MaintenanceLog,
   ProfitabilityByProductRow, ProfitabilityByCustomerRow, ProfitabilityReport,
   TraceabilityResult,
+  PricingTemplate, TemplatePricePreview,
 } from '@/types/api.types'
 
 // ── Suppliers ──────────────────────────────────────────────────
@@ -360,6 +361,24 @@ export const salesService = {
     api.delete(`/sales/${id}`),
   updateStatus: (id: string, status: string) =>
     api.patch<{ data: SaleOrder }>(`/sales/${id}/status`, { status }).then(unwrap),
+}
+
+// ── Pricing Templates ──────────────────────────────────────────
+export const pricingTemplatesService = {
+  findAll: () =>
+    api.get<{ data: PricingTemplate[] }>('/pricing-templates').then(unwrap),
+  findOne: (id: string) =>
+    api.get<{ data: PricingTemplate }>(`/pricing-templates/${id}`).then(unwrap),
+  create: (data: { productId: string; name: string; defaultMargin?: number; notes?: string }) =>
+    api.post<{ data: PricingTemplate }>('/pricing-templates', data).then(unwrap),
+  preview: (id: string, data: { estimatedMaterialG: number; estimatedPrintTimeMinutes: number; piecesPerPrint?: number; margin?: number }) =>
+    api.post<{ data: TemplatePricePreview }>(`/pricing-templates/${id}/preview`, data).then(unwrap),
+  derive: (id: string, data: unknown) =>
+    api.post<{ data: { product: Product; pricing: TemplatePricePreview } }>(`/pricing-templates/${id}/derive`, data).then(unwrap),
+  recalculate: (id: string) =>
+    api.post<{ data: { updated: number; total: number; changes: unknown[] } }>(`/pricing-templates/${id}/recalculate`, {}).then(unwrap),
+  remove: (id: string) =>
+    api.delete(`/pricing-templates/${id}`),
 }
 
 // ── Reports — Profitability ────────────────────────────────────

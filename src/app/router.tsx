@@ -24,6 +24,7 @@ import { ProductionPage } from './routes/production'
 import { PrintFailuresPage } from './routes/production/failures'
 import { MaintenancePage } from './routes/production/maintenance'
 import { ReportsPage } from './routes/reports'
+import { PricingTemplatesPage } from './routes/products/templates'
 import { ProfitabilityPage } from './routes/reports/profitability'
 import { TraceabilityPage } from './routes/resources/traceability'
 import { OnboardingPage } from './routes/onboarding'
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: 'suppliers',      element: <SuppliersPage /> },
       { path: 'calculator',              element: <CalculatorPage /> },
       { path: 'reports',                 element: <ReportsPage /> },
+      { path: 'products/templates',      element: <PricingTemplatesPage /> },
       { path: 'reports/profitability',   element: <ProfitabilityPage /> },
       { path: 'resources/traceability',  element: <TraceabilityPage /> },
       { path: 'notifications', element: <NotificationsPage /> },

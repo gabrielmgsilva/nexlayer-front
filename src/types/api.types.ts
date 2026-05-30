@@ -280,6 +280,11 @@ export interface Product {
   deletedAt?: string
   createdAt: string
   _count?: { productionJobs: number; variations: number }
+  // Template de precificação
+  pricingTemplateId?: string
+  templateMargin?: number
+  pricingTemplate?: { id: string; name: string }
+  templateOf?: { id: string; name: string }
 }
 
 // ── Customer ──────────────────────────────────────────
@@ -423,6 +428,40 @@ export interface CostSnapshot {
   depreciationRatePerHour: number
   maintenanceRatePerHour: number
   createdAt: string
+}
+
+// ── PricingTemplate ───────────────────────────────────
+export interface PricingTemplate {
+  id: string
+  productId: string
+  snapshotId: string
+  name: string
+  rateMaterialPerG: number
+  rateTimePerMin: number
+  baseAccessoryCost: number
+  failureRateApplied: number
+  defaultMargin: number
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  product?: { id: string; name: string; sku?: string; category?: { name: string } }
+  derivedProducts?: Array<{
+    id: string; name: string; sku?: string
+    sellingPrice?: number; estimatedMaterialG: number
+    estimatedPrintTimeMinutes: number; templateMargin?: number; isActive: boolean
+  }>
+  _count?: { derivedProducts: number }
+}
+
+export interface TemplatePricePreview {
+  unitMaterialCost: number
+  unitTimeCost: number
+  unitAccessoryCost: number
+  unitCostBeforeErr: number
+  unitCostWithErr: number
+  margin: number
+  sellingPrice: number
+  grossProfit: number
 }
 
 // ── Profitability ─────────────────────────────────────
