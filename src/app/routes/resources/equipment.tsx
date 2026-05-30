@@ -100,7 +100,9 @@ export function EquipmentPage() {
 
   const save = useMutation({
     mutationFn: (p: { id?: string; data: ReturnType<typeof buildPayload> }) =>
-      p.id ? equipmentService.update(p.id, p.data) : equipmentService.create(p.data),
+      p.id
+        ? equipmentService.update(p.id, p.data as Parameters<typeof equipmentService.update>[1])
+        : equipmentService.create(p.data as Parameters<typeof equipmentService.create>[0]),
     onSuccess: (_, p) => {
       toast.success(p.id ? 'Equipamento atualizado' : 'Equipamento criado')
       resetForm()

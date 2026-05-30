@@ -1,10 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Icon, Icons, Btn, NEX } from '@/lib/nex'
 import { notificationsService } from '@/services/notifications.service'
 import { useAuthStore } from '@/stores/auth.store'
-import { useThemeStore, type ThemeMode } from '@/stores/theme.store'
 
   const TITLES: Record<string, { title: string; breadcrumb: string }> = {
   '/':              { title: 'Dashboard',     breadcrumb: 'Visão geral' },
@@ -95,77 +93,3 @@ export function Header() {
   )
 }
 
-// ─────────────────────────────────────────
-// Theme toggle (claro / escuro / sistema)
-// ─────────────────────────────────────────
-
-const SUN_PATH = (
-  <>
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-  </>
-)
-const MOON_PATH = <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-const MONITOR_PATH = (
-  <>
-    <rect x="2" y="3" width="20" height="14" rx="2" />
-    <path d="M8 21h8M12 17v4" />
-  </>
-)
-
-function ThemeToggle() {
-  const mode = useThemeStore((s) => s.mode)
-  const setMode = useThemeStore((s) => s.setMode)
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
-  const icon = mode === 'light' ? SUN_PATH : mode === 'dark' ? MOON_PATH : MONITOR_PATH
-  const options: Array<{ value: ThemeMode; label: string; icon: ReactNode }> = [
-    { value: 'light',  label: 'Claro',   icon: SUN_PATH },
-    { value: 'dark',   label: 'Escuro',  icon: MOON_PATH },
-    { value: 'system', label: 'Sistema', icon: MONITOR_PATH },
-  ]
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="h-9 w-9 rounded-md flex items-center justify-center"
-        style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}
-        title="Tema"
-      >
-        <Icon d={icon} size={14} />
-      </button>
-      {open && (
-        <div
-          className="absolute right-0 top-11 z-30 rounded-md py-1 min-w-[148px]"
-          style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}
-        >
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => { setMode(opt.value); setOpen(false) }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-left hover:opacity-80"
-              style={{
-                background: mode === opt.value ? NEX.surface2 : 'transparent',
-                color: mode === opt.value ? NEX.cyan : NEX.text,
-              }}
-            >
-              <Icon d={opt.icon} size={13} />
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}

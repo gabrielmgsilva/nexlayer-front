@@ -8,7 +8,6 @@ export function AppToaster() {
     <Toaster
       theme={resolved}
       position="bottom-right"
-      closeButton
       gap={8}
       duration={4000}
       toastOptions={{

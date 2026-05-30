@@ -50,9 +50,7 @@ export function CostCenterPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return configs
-    return configs.filter((c: CostConfig) =>
-      c.name.toLowerCase().includes(q) || (c.equipment?.name ?? '').toLowerCase().includes(q),
-    )
+    return configs.filter((c: CostConfig) => c.name.toLowerCase().includes(q))
   }, [configs, search])
 
   const resetForm = () => {
@@ -103,8 +101,8 @@ export function CostCenterPage() {
   const save = useMutation({
     mutationFn: (payload: { id?: string; data: ReturnType<typeof buildPayload> }) =>
       payload.id
-        ? costConfigService.update(payload.id, payload.data)
-        : costConfigService.create(payload.data),
+        ? costConfigService.update(payload.id, payload.data as Parameters<typeof costConfigService.update>[1])
+        : costConfigService.create(payload.data as Parameters<typeof costConfigService.create>[0]),
     onSuccess: (_, payload) => {
       toast.success(payload.id ? 'Centro de custo atualizado' : 'Centro de custo criado')
       setDrawerOpen(false)

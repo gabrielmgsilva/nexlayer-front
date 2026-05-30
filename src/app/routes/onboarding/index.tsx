@@ -315,7 +315,6 @@ function CostStep({ onBack, onNext, hasCostConfig }: { onBack: () => void; onNex
       isDefault: true,
       electricityCostPerKwh: Number(electricity),
       laborCostPerHour: Number(labor),
-      laborMinutesPerJob: Number(laborMin),
       monthlyOverhead: Number(overhead),
     }),
     onSuccess: () => { toast.success('Perfil de custos criado'); onNext() },

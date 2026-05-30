@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Btn, Icons, Icon, NEX, FilamentDot, nexAlpha } from '@/lib/nex'
+import { Btn, Icons, Icon, NEX, nexAlpha } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Drawer } from '@/components/ui/drawer'
 import { domainService } from '@/services/entities.service'

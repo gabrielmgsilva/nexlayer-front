@@ -113,7 +113,6 @@ export function CalculatorPage() {
     if (!costConfigId && configs.length > 0) {
       const def = configs.find((c: CostConfig) => c.isDefault) ?? configs[0]
       setCostConfigId(def.id)
-      if (def.equipmentId && !equipmentId) setEquipmentId(def.equipmentId)
     }
   }, [costConfigId, configs, equipmentId])
 

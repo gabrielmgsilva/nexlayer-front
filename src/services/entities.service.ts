@@ -231,10 +231,8 @@ type CostConfigPayload = {
   name: string
   isDefault?: boolean
   isActive?: boolean
-  equipmentId?: string
   electricityCostPerKwh: number
   laborCostPerHour?: number
-  laborMinutesPerJob?: number
   monthlyOverhead?: number
   monthlyProductionHours?: number
   failureRateMode?: 'MANUAL' | 'AUTO' | 'HYBRID'

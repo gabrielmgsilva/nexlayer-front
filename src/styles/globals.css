@@ -279,42 +279,6 @@
   height: 18px !important;
 }
 
-/* Close button → styled as the neon dot indicator */
-.nex-toast-close {
-  width:         8px         !important;
-  height:        8px         !important;
-  border-radius: 50%         !important;
-  padding:       0           !important;
-  border:        none        !important;
-  background:    var(--nex-border-hi) !important;
-  box-shadow:    none        !important;
-  cursor:        pointer     !important;
-  flex-shrink:   0           !important;
-  transition:    box-shadow 0.2s, background 0.2s !important;
-}
-/* Hide the × SVG inside the button */
-.nex-toast-close svg { display: none !important; }
-/* Dot color per type */
-.nex-toast[data-type='success'] .nex-toast-close {
-  background: var(--nex-green) !important;
-  box-shadow: 0 0 7px 1px var(--nex-green) !important;
-}
-.nex-toast[data-type='error'] .nex-toast-close {
-  background: var(--nex-red) !important;
-  box-shadow: 0 0 7px 1px var(--nex-red) !important;
-}
-.nex-toast[data-type='warning'] .nex-toast-close {
-  background: var(--nex-amber) !important;
-  box-shadow: 0 0 7px 1px var(--nex-amber) !important;
-}
-.nex-toast[data-type='info'] .nex-toast-close {
-  background: var(--nex-cyan) !important;
-  box-shadow: 0 0 7px 1px var(--nex-cyan) !important;
-}
-/* Hover: pulse the glow */
-.nex-toast-close:hover {
-  filter: brightness(1.2) !important;
-}
 
 /* ── Per-type: border + right dot + icon color ────── */
 /* nex-toast é o próprio <li data-sonner-toast data-type="…"> */
