@@ -207,6 +207,19 @@
   }
   .nex-pulse { animation: pulse 2s infinite; }
 
+  @keyframes nex-drawer-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes nex-drawer-out {
+    from { transform: translateX(0);    opacity: 1; }
+    to   { transform: translateX(100%); opacity: 0; }
+  }
+  @keyframes nex-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
   /* Inputs base — color-scheme acompanha o tema */
   input[type="text"],
   input[type="email"],
@@ -220,6 +233,116 @@
   select {
     color-scheme: inherit;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   SONNER — NEXLAYER toast overrides
+   ══════════════════════════════════════════════════════ */
+
+/* Container */
+[data-sonner-toaster] {
+  font-family: var(--font-body) !important;
+}
+
+/* Base toast */
+.nex-toast {
+  background:    var(--nex-bg)               !important;
+  border:        1px solid var(--nex-border)  !important;
+  color:         var(--nex-text)             !important;
+  border-radius: 10px                        !important;
+  font-size:     13px                        !important;
+  padding:       14px 16px                   !important;
+  box-shadow:    0 8px 32px rgba(0,0,0,0.45) !important;
+}
+
+/* Title */
+.nex-toast-title {
+  font-size:   13px   !important;
+  font-weight: 600    !important;
+  color:       var(--nex-text) !important;
+  line-height: 1.4    !important;
+}
+
+/* Description */
+.nex-toast-description {
+  font-size: 12px !important;
+  color:     var(--nex-text-dim) !important;
+  margin-top: 2px !important;
+}
+
+/* Icon wrapper */
+.nex-toast-icon {
+  flex-shrink: 0 !important;
+}
+.nex-toast-icon svg {
+  width:  18px !important;
+  height: 18px !important;
+}
+
+/* Close button → styled as the neon dot indicator */
+.nex-toast-close {
+  width:         8px         !important;
+  height:        8px         !important;
+  border-radius: 50%         !important;
+  padding:       0           !important;
+  border:        none        !important;
+  background:    var(--nex-border-hi) !important;
+  box-shadow:    none        !important;
+  cursor:        pointer     !important;
+  flex-shrink:   0           !important;
+  transition:    box-shadow 0.2s, background 0.2s !important;
+}
+/* Hide the × SVG inside the button */
+.nex-toast-close svg { display: none !important; }
+/* Dot color per type */
+.nex-toast[data-type='success'] .nex-toast-close {
+  background: var(--nex-green) !important;
+  box-shadow: 0 0 7px 1px var(--nex-green) !important;
+}
+.nex-toast[data-type='error'] .nex-toast-close {
+  background: var(--nex-red) !important;
+  box-shadow: 0 0 7px 1px var(--nex-red) !important;
+}
+.nex-toast[data-type='warning'] .nex-toast-close {
+  background: var(--nex-amber) !important;
+  box-shadow: 0 0 7px 1px var(--nex-amber) !important;
+}
+.nex-toast[data-type='info'] .nex-toast-close {
+  background: var(--nex-cyan) !important;
+  box-shadow: 0 0 7px 1px var(--nex-cyan) !important;
+}
+/* Hover: pulse the glow */
+.nex-toast-close:hover {
+  filter: brightness(1.2) !important;
+}
+
+/* ── Per-type: border + right dot + icon color ────── */
+/* nex-toast é o próprio <li data-sonner-toast data-type="…"> */
+
+.nex-toast[data-type='success'] {
+  border-color: color-mix(in srgb, var(--nex-green) 30%, transparent) !important;
+}
+.nex-toast[data-type='success'] .nex-toast-icon svg { color: var(--nex-green) !important; }
+
+.nex-toast[data-type='error'] {
+  border-color: color-mix(in srgb, var(--nex-red) 30%, transparent) !important;
+}
+.nex-toast[data-type='error'] .nex-toast-icon svg { color: var(--nex-red) !important; }
+
+.nex-toast[data-type='warning'] {
+  border-color: color-mix(in srgb, var(--nex-amber) 30%, transparent) !important;
+}
+.nex-toast[data-type='warning'] .nex-toast-icon svg { color: var(--nex-amber) !important; }
+
+.nex-toast[data-type='info'] {
+  border-color: color-mix(in srgb, var(--nex-cyan) 30%, transparent) !important;
+}
+.nex-toast[data-type='info'] .nex-toast-icon svg { color: var(--nex-cyan) !important; }
+
+/* ── Light theme ─────────────────────────────────── */
+[data-theme='light'] .nex-toast {
+  background:  var(--nex-surface) !important;
+  box-shadow:  0 4px 20px rgba(0,0,0,0.10) !important;
 }
 
 @layer utilities {

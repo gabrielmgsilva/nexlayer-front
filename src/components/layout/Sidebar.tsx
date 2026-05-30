@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { salesService } from '@/services/entities.service'
 
 type NavItem = { id: string; label: string; icon: React.ReactNode; path: string; badge?: number }
+type NavGroup = { label: string; items: NavItem[] }
 
 export function Sidebar() {
   const navigate = useNavigate()
@@ -18,15 +19,46 @@ export function Sidebar() {
   })
   const pendingCount = pendingSales?.meta?.total ?? 0
 
-  const items: NavItem[] = [
-    { id: 'dashboard',  label: 'Dashboard',     icon: Icons.dashboard, path: '/' },
-    { id: 'sales',      label: 'Vendas',        icon: Icons.cart,      path: '/sales',     badge: pendingCount },
-    { id: 'production', label: 'Produção',      icon: Icons.printer,   path: '/production' },
-    { id: 'products',   label: 'Produtos',      icon: Icons.pkg,       path: '/products' },
-    { id: 'resources',  label: 'Recursos',      icon: Icons.spool,     path: '/resources' },
-    { id: 'calc',       label: 'Calculadora',   icon: Icons.calc,      path: '/calculator' },
-    { id: 'reports',    label: 'Relatórios',    icon: Icons.trendUp,   path: '/reports' },
-    { id: 'settings',   label: 'Configurações', icon: Icons.cog,       path: '/settings' },
+  const groups: NavGroup[] = [
+    {
+      label: '',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: Icons.dashboard, path: '/' },
+      ],
+    },
+    {
+      label: 'Comercial',
+      items: [
+        { id: 'sales',       label: 'Vendas',           icon: Icons.cart,     path: '/sales',                badge: pendingCount },
+        { id: 'channels',    label: 'Canais de venda',  icon: Icons.link,     path: '/settings/channels' },
+        { id: 'customers',   label: 'Clientes',         icon: Icons.user,     path: '/settings/customers' },
+        { id: 'suppliers',   label: 'Fornecedores',     icon: Icons.pkg,      path: '/suppliers' },
+      ],
+    },
+    {
+      label: 'Produção',
+      items: [
+        { id: 'production',   label: 'Produção',       icon: Icons.printer,  path: '/production' },
+        { id: 'products',     label: 'Produtos',       icon: Icons.pkg,      path: '/products' },
+        { id: 'equipment',    label: 'Equipamentos',   icon: Icons.printer,  path: '/resources/equipment' },
+        { id: 'materials',    label: 'Matéria-prima',  icon: Icons.spool,    path: '/resources/materials' },
+        { id: 'accessories',  label: 'Acessórios',     icon: Icons.pkg,      path: '/resources/accessories' },
+      ],
+    },
+    {
+      label: 'Financeiro',
+      items: [
+        { id: 'calc',         label: 'Calculadora',    icon: Icons.calc,     path: '/calculator' },
+        { id: 'reports',      label: 'Relatórios',     icon: Icons.trendUp,  path: '/reports' },
+        { id: 'cost-center',  label: 'Centro de custo', icon: Icons.cog,    path: '/settings/cost-center' },
+      ],
+    },
+    {
+      label: 'Configurações',
+      items: [
+        { id: 'colors', label: 'Cores', icon: Icons.spool, path: '/settings/colors' },
+      ],
+    },
   ]
 
   const isActive = (path: string) =>
@@ -65,34 +97,47 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {items.map((it) => {
-          const active = isActive(it.path)
-          return (
-            <button
-              key={it.id}
-              onClick={() => navigate(it.path)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-all relative"
-              style={{
-                background: active ? NEX.cyanDim : 'transparent',
-                color: active ? NEX.cyan : NEX.textDim,
-              }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = NEX.surface2 }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent' }}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r" style={{ background: NEX.cyan }} />
-              )}
-              <Icon d={it.icon} size={15} />
-              <span className="flex-1 text-left">{it.label}</span>
-              {it.badge ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold" style={{ background: NEX.amber, color: '#1A1100' }}>
-                  {it.badge}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
+        {groups.map((group) => (
+          <div key={group.label}>
+            {group.label && (
+              <div className="px-3 pb-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: NEX.textMute }}>
+                  {group.label}
                 </span>
-              ) : null}
-            </button>
-          )
-        })}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((it) => {
+                const active = isActive(it.path)
+                return (
+                  <button
+                    key={it.id}
+                    onClick={() => navigate(it.path)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-all relative"
+                    style={{
+                      background: active ? NEX.cyanDim : 'transparent',
+                      color: active ? NEX.cyan : NEX.textDim,
+                    }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = NEX.surface2 }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r" style={{ background: NEX.cyan }} />
+                    )}
+                    <Icon d={it.icon} size={15} />
+                    <span className="flex-1 text-left">{it.label}</span>
+                    {it.badge ? (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold" style={{ background: NEX.amber, color: '#1A1100' }}>
+                        {it.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="px-3 py-3" style={{ borderTop: `1px solid ${NEX.border}` }}>

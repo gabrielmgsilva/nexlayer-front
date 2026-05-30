@@ -317,19 +317,8 @@ export interface CostConfig {
   name: string
   isDefault: boolean
   isActive: boolean
-  equipmentId?: string
-  equipment?: {
-    id: string
-    name: string
-    annualMaintenanceCost: number
-    annualUsageHours: number
-    avgPowerWatts: number
-    purchasePrice: number
-    estimatedLifespanHours: number
-  }
   electricityCostPerKwh: number
   laborCostPerHour?: number
-  laborMinutesPerJob?: number
   monthlyOverhead?: number
   monthlyProductionHours?: number
   failureRateMode: 'MANUAL' | 'AUTO' | 'HYBRID'
