@@ -425,15 +425,152 @@ export interface CostSnapshot {
   createdAt: string
 }
 
+// ── Profitability ─────────────────────────────────────
+export interface ProfitabilityByProductRow {
+  productId: string
+  productName: string
+  sku: string | null
+  units: number
+  ordersCount: number
+  revenue: number
+  cogs: number
+  commissions: number
+  fees: number
+  grossProfit: number
+  margin: number
+}
+
+export interface ProfitabilityByCustomerRow {
+  customerId: string
+  customerName: string
+  customerType: string
+  revenue: number
+  cogs: number
+  shipping: number
+  commissions: number
+  fees: number
+  grossProfit: number
+  margin: number
+  ordersCount: number
+  avgOrderValue: number
+}
+
+export interface ProfitabilityReport<T> {
+  window: { from: string; to: string }
+  rows: T[]
+  totals: { revenue: number; cogs: number; grossProfit: number; units?: number; ordersCount?: number }
+}
+
+// ── Traceability ──────────────────────────────────────
+export interface TraceabilityResult {
+  stock: {
+    id: string
+    lotNumber?: string
+    status: string
+    initialWeightG: number
+    currentWeightG: number
+    costPerKg: number
+    purchaseDate?: string
+    openedDate?: string
+    material: {
+      id: string
+      materialType: string
+      filamentType?: { name: string }
+      brand?: { name: string }
+      supplier?: { id: string; name: string }
+    }
+  }
+  transactions: Array<{
+    id: string; type: string; quantityG: number
+    referenceId?: string; referenceType?: string; notes?: string; createdAt: string
+  }>
+  jobs: Array<{
+    jobId: string; jobNumber: string; status: string
+    product: { id: string; name: string; sku?: string }
+    customer?: { id: string; name: string }
+    completedAt?: string
+    saleOrders: Array<{ id: string; orderNumber: string; status: string; createdAt: string; customer?: { id: string; name: string } }>
+  }>
+  summary: { totalJobs: number; totalSaleOrders: number; consumedG: number }
+}
+
 // ── PrintAttempt ──────────────────────────────────────
 export interface PrintAttempt {
   id: string
   productionJobId: string
+  equipmentId: string
   attemptNumber: number
-  status: 'SUCCESS' | 'PARTIAL_FAILURE' | 'TOTAL_FAILURE'
-  failedAt?: string
+  status: 'SUCCESS' | 'FAILED' | 'PARTIAL'
+  piecesExpected: number
+  piecesOk: number
+  piecesDefective: number
+  printTimeMinutes?: number
+  materialUsedG?: number
+  materialWastedG?: number
+  startedAt?: string
+  finishedAt?: string
   notes?: string
   createdAt: string
+}
+
+// ── PrintFailure ──────────────────────────────────────
+export type FailureCategory =
+  | 'ADHESION' | 'CLOG' | 'LAYER_SHIFT' | 'STRINGING' | 'WARPING'
+  | 'SPAGHETTI' | 'UNDER_EXTRUSION' | 'OVER_EXTRUSION' | 'FILAMENT_BREAK'
+  | 'FILAMENT_TANGLE' | 'POWER_LOSS' | 'MECHANICAL' | 'THERMAL'
+  | 'SUPPORT_FAIL' | 'DIMENSIONAL' | 'COSMETIC' | 'OPERATOR_ERROR'
+  | 'SOFTWARE' | 'OTHER'
+
+export type FailureSeverity = 'TOTAL' | 'PARTIAL' | 'COSMETIC'
+
+export interface PrintFailure {
+  id: string
+  printAttemptId: string
+  equipmentId: string
+  productId?: string
+  materialId?: string
+  failureCategory: FailureCategory
+  failureSeverity: FailureSeverity
+  materialWastedG: number
+  timeWastedMinutes: number
+  reprintRequired: boolean
+  detectedAtLayer?: number
+  detectedAtPercent?: number
+  ambientTempC?: number
+  humidityPercent?: number
+  nozzleHours?: number
+  rootCause?: string
+  correctiveAction?: string
+  notes?: string
+  occurredAt: string
+  createdAt: string
+  equipment?: { id: string; name: string; model: string }
+  product?: { id: string; name: string }
+  material?: { id: string; filamentType?: { name: string }; brand?: { name: string } }
+  printAttempt?: { id: string; attemptNumber: number; productionJobId: string }
+}
+
+export interface PrintFailureAnalytics {
+  totalCount: number
+  totalMaterialWastedG: number
+  totalTimeWastedMinutes: number
+  avgMaterialWastedG: number
+  byCategory: Array<{ category: FailureCategory; count: number; materialWastedG: number; timeWastedMinutes: number }>
+  bySeverity: Array<{ severity: FailureSeverity; count: number }>
+  byEquipment: Array<{ equipmentId: string; equipmentName: string; count: number; materialWastedG: number }>
+}
+
+// ── MaintenanceLog ────────────────────────────────────
+export interface MaintenanceLog {
+  id: string
+  equipmentId: string
+  description: string
+  cost?: number
+  performedAt: string
+  nextDueAt?: string
+  notes?: string
+  createdAt: string
+  equipment?: { id: string; name: string; model: string }
 }
 
 // ── Calculator ────────────────────────────────────────

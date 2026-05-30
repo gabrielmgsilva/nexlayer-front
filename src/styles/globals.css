@@ -207,6 +207,20 @@
   }
   .nex-pulse { animation: pulse 2s infinite; }
 
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  @keyframes nex-dialog-in {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes nex-dialog-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
   @keyframes nex-drawer-in {
     from { transform: translateX(100%); opacity: 0; }
     to   { transform: translateX(0);    opacity: 1; }

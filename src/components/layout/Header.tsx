@@ -4,22 +4,47 @@ import { Icon, Icons, Btn, NEX } from '@/lib/nex'
 import { notificationsService } from '@/services/notifications.service'
 import { useAuthStore } from '@/stores/auth.store'
 
-  const TITLES: Record<string, { title: string; breadcrumb: string }> = {
-  '/':              { title: 'Dashboard',     breadcrumb: 'Visão geral' },
-  '/sales':         { title: 'Vendas',        breadcrumb: 'Pedidos e canais' },
-  '/products':      { title: 'Produtos',      breadcrumb: 'Catálogo e custos' },
-  '/resources':     { title: 'Recursos',      breadcrumb: 'Equipamentos · Filamentos · Acessórios' },
-  '/calculator':    { title: 'Calculadora',   breadcrumb: 'Motor de precificação' },
-  '/production':    { title: 'Produção',      breadcrumb: 'Fila e timeline das impressoras' },
-  '/reports':       { title: 'Relatórios',    breadcrumb: 'P&L · Comissões · Variance de custo' },
-  '/settings':      { title: 'Configurações', breadcrumb: 'Domínios e preferências' },
+const TITLES: Record<string, { title: string; breadcrumb: string }> = {
+  // Standalone
+  '/':                        { title: 'Dashboard',       breadcrumb: '' },
+  '/notifications':           { title: 'Notificações',    breadcrumb: '' },
+
+  // Comercial
+  '/sales':                   { title: 'Vendas',          breadcrumb: 'Comercial' },
+  '/settings/channels':       { title: 'Canais de venda', breadcrumb: 'Comercial' },
+  '/settings/customers':      { title: 'Clientes',        breadcrumb: 'Comercial' },
+  '/suppliers':               { title: 'Fornecedores',    breadcrumb: 'Comercial' },
+
+  // Produção
+  '/production/failures':     { title: 'Falhas de impressão',  breadcrumb: 'Produção' },
+  '/production/maintenance':  { title: 'Manutenção preventiva', breadcrumb: 'Produção' },
+  '/production':              { title: 'Produção',              breadcrumb: 'Produção' },
+  '/products':                { title: 'Produtos',        breadcrumb: 'Produção' },
+  '/resources/equipment':     { title: 'Equipamentos',    breadcrumb: 'Produção' },
+  '/resources/materials':     { title: 'Matéria-prima',   breadcrumb: 'Produção' },
+  '/resources/accessories':   { title: 'Acessórios',      breadcrumb: 'Produção' },
+
+  // Financeiro
+  '/calculator':               { title: 'Calculadora',           breadcrumb: 'Financeiro' },
+  '/reports/profitability':    { title: 'Rentabilidade',          breadcrumb: 'Financeiro' },
+  '/reports':                  { title: 'Relatórios',             breadcrumb: 'Financeiro' },
+  '/settings/cost-center':     { title: 'Centro de custo',        breadcrumb: 'Financeiro' },
+  '/resources/traceability':   { title: 'Rastreabilidade de lote', breadcrumb: 'Produção' },
+
+  // Configurações
+  '/settings/categories':             { title: 'Categorias de produto',   breadcrumb: 'Configurações' },
+  '/settings/accessory-categories':   { title: 'Categorias de acessório', breadcrumb: 'Configurações' },
+  '/settings/colors':                 { title: 'Cores',                   breadcrumb: 'Configurações' },
 }
 
 function deriveTitle(pathname: string) {
+  // exact match first (handles /sales/123 via startsWith below)
   if (TITLES[pathname]) return TITLES[pathname]
-  // try first segment
-  const seg = '/' + (pathname.split('/')[1] ?? '')
-  return TITLES[seg] ?? { title: 'NEXLAYER', breadcrumb: '' }
+  // longest prefix match — covers /sales/:id, /resources/*, /settings/*
+  const match = Object.keys(TITLES)
+    .filter((k) => k !== '/' && pathname.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0]
+  return match ? TITLES[match] : { title: 'NEXLAYER', breadcrumb: '' }
 }
 
 export function Header() {

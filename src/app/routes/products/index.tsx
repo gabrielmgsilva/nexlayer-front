@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Card, Pill, Btn, Money, Icon, Icons, NEX, ProductThumb, Bar } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Drawer } from '@/components/ui/drawer'
 import { DecimalRtlInput } from '@/components/ui/decimal-rtl-input'
 import { categoriesService, domainService, productsService, salesChannelService } from '@/services/entities.service'
 import type { Category, Color, CostSnapshot, Product, ProductVariation, SalesChannel } from '@/types/api.types'
@@ -55,6 +56,8 @@ export function ProductsPage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const [filter, setFilter] = useState<Filter>('all')
+  const [search, setSearch] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null)
 
@@ -110,9 +113,13 @@ export function ProductsPage() {
   )
 
   const list = all.filter((p) => {
-    if (filter === 'kit') return p.isKit
-    if (filter === 'low') return p.minStockAlert !== undefined && p.stockQuantity <= p.minStockAlert
-    if (filter === 'inactive') return !p.isActive
+    if (filter === 'kit') { if (!p.isKit) return false }
+    else if (filter === 'low') { if (!(p.minStockAlert !== undefined && p.stockQuantity <= p.minStockAlert)) return false }
+    else if (filter === 'inactive') { if (p.isActive) return false }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      return p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q)
+    }
     return true
   })
 
@@ -137,6 +144,8 @@ export function ProductsPage() {
     setIsActive(true)
     setKitItems([])
   }
+
+  const openCreate = () => { resetForm(); setDrawerOpen(true) }
 
   const startEdit = (product: Product) => {
     setEditingId(product.id)
@@ -165,6 +174,7 @@ export function ProductsPage() {
       productId: item.productId,
       quantity: String(item.quantity),
     })))
+    setDrawerOpen(true)
   }
 
   useEffect(() => {
@@ -187,6 +197,7 @@ export function ProductsPage() {
       toast.success(payload.id ? 'Produto alterado' : 'Produto criado')
       queryClient.invalidateQueries({ queryKey: ['products'] })
       resetForm()
+      setDrawerOpen(false)
     },
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao salvar produto')),
   })
@@ -317,11 +328,17 @@ export function ProductsPage() {
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-2 h-8 px-3 rounded-md" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+          <Icon d={Icons.search} size={13} style={{ color: NEX.textMute }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar produto..." className="bg-transparent text-[12.5px] focus:outline-none w-44" style={{ color: NEX.text }} />
+          {search && <button onClick={() => setSearch('')} style={{ color: NEX.textMute }}><Icon d={Icons.x} size={12} /></button>}
+        </div>
         <span className="text-[11px]" style={{ color: NEX.textMute }}>{list.length} produtos</span>
+        <Btn kind="primary" size="md" icon={Icons.plus} onClick={openCreate}>Novo produto</Btn>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 items-start">
-        <Card padding={false} className="col-span-2">
+      <div>
+        <Card padding={false}>
           <table className="w-full text-[12.5px]">
             <thead>
               <tr style={{ borderBottom: `1px solid ${NEX.border}` }}>
@@ -353,11 +370,10 @@ export function ProductsPage() {
             </tbody>
           </table>
         </Card>
+      </div>
 
-        <Card>
-          <div className="text-[13px] font-semibold mb-3">{editingId ? 'Alterar produto' : 'Novo produto'}</div>
-
-          <div className="space-y-2.5">
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'Alterar produto' : 'Novo produto'} width={520}>
+        <div className="space-y-2.5">
             <FormField label="Nome" required>
               <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Nome do produto" />
             </FormField>
@@ -588,26 +604,23 @@ export function ProductsPage() {
               </label>
             </div>
 
-            <div className="flex gap-2 pt-1">
-              {editingId && (
-                <Btn kind="ghost" size="md" className="flex-1 justify-center" onClick={resetForm}>
-                  Cancelar alteração
-                </Btn>
-              )}
+            <div className="flex flex-col gap-2 pt-2">
               <Btn
                 kind="primary"
                 size="md"
                 icon={editingId ? Icons.check : Icons.plus}
-                className={(editingId ? 'flex-1' : 'w-full') + ' justify-center'}
+                className="w-full justify-center"
                 disabled={!canSubmit || save.isPending}
                 onClick={submit}
               >
                 {editingId ? 'Salvar alterações' : 'Criar produto'}
               </Btn>
+              <Btn kind="ghost" size="md" className="w-full justify-center" onClick={() => setDrawerOpen(false)}>
+                Cancelar
+              </Btn>
             </div>
           </div>
-        </Card>
-      </div>
+      </Drawer>
 
       <ConfirmDialog
         open={!!pendingDelete}

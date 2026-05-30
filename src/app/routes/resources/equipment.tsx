@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, Pill, Bar, Icons, Money, NEX, EQUIPMENT_STATUS, Btn } from '@/lib/nex'
+import { Pill, Bar, Icons, Icon, Money, NEX, EQUIPMENT_STATUS, Btn, nexAlpha } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Drawer } from '@/components/ui/drawer'
 import { DecimalRtlInput } from '@/components/ui/decimal-rtl-input'
 import { equipmentService } from '@/services/entities.service'
 import type { Equipment } from '@/types/api.types'
@@ -14,14 +15,14 @@ export function EquipmentPage() {
   const focusEquipmentId = searchParams.get('equipmentId') ?? undefined
 
   const queryClient = useQueryClient()
-  const { data: res } = useQuery({
-    queryKey: ['equipment', 'list', 'full'],
-    queryFn: () => equipmentService.findAll({ limit: 100 }),
-  })
+  const { data: res } = useQuery({ queryKey: ['equipment', 'list', 'full'], queryFn: () => equipmentService.findAll({ limit: 100 }) })
   const list: Equipment[] = res?.data ?? []
 
+  const [search, setSearch] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Equipment | null>(null)
+
   const [name, setName] = useState('')
   const [model, setModel] = useState('')
   const [serialNumber, setSerialNumber] = useState('')
@@ -39,12 +40,13 @@ export function EquipmentPage() {
   const [status, setStatus] = useState<Equipment['status']>('AVAILABLE')
   const [notes, setNotes] = useState('')
 
-  const parseOptionalInt = (value: string) => {
-    if (!value.trim()) return undefined
-    const parsed = Number(value)
-    if (!Number.isFinite(parsed)) return undefined
-    return Math.trunc(parsed)
-  }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((e) => e.name.toLowerCase().includes(q) || (e.model ?? '').toLowerCase().includes(q) || (e.brand?.name ?? '').toLowerCase().includes(q))
+  }, [list, search])
+
+  const parseOptionalInt = (v: string) => { if (!v.trim()) return undefined; const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : undefined }
 
   const resetForm = () => {
     setEditingId(null); setName(''); setModel(''); setSerialNumber('')
@@ -55,57 +57,57 @@ export function EquipmentPage() {
     setStatus('AVAILABLE'); setNotes('')
   }
 
-  const startEdit = (equipment: Equipment) => {
-    setEditingId(equipment.id); setName(equipment.name ?? ''); setModel(equipment.model ?? '')
-    setSerialNumber(equipment.serialNumber ?? '')
-    setPurchasePrice(Number(equipment.purchasePrice) || 0)
-    setPurchaseDate(equipment.purchaseDate ? equipment.purchaseDate.slice(0, 10) : new Date().toISOString().slice(0, 10))
-    setEstimatedLifespanHours(String(Number(equipment.estimatedLifespanHours) || 6000))
-    setRatedPowerWatts(String(Number(equipment.ratedPowerWatts) || 350))
-    setAvgPowerWatts(String(Number(equipment.avgPowerWatts) || 120))
-    setAnnualMaintenanceCost(Number(equipment.annualMaintenanceCost) || 0)
-    setAnnualUsageHours(String(Number(equipment.annualUsageHours) || 1500))
-    setBuildVolumeX(equipment.buildVolumeX != null ? String(equipment.buildVolumeX) : '')
-    setBuildVolumeY(equipment.buildVolumeY != null ? String(equipment.buildVolumeY) : '')
-    setBuildVolumeZ(equipment.buildVolumeZ != null ? String(equipment.buildVolumeZ) : '')
-    setMaxSpeedMmS(equipment.maxSpeedMmS != null ? String(equipment.maxSpeedMmS) : '')
-    setStatus(equipment.status); setNotes(equipment.notes ?? '')
+  const openCreate = () => { resetForm(); setDrawerOpen(true) }
+
+  const openEdit = (eq: Equipment) => {
+    setEditingId(eq.id); setName(eq.name ?? ''); setModel(eq.model ?? '')
+    setSerialNumber(eq.serialNumber ?? ''); setPurchasePrice(Number(eq.purchasePrice) || 0)
+    setPurchaseDate(eq.purchaseDate ? eq.purchaseDate.slice(0, 10) : new Date().toISOString().slice(0, 10))
+    setEstimatedLifespanHours(String(Number(eq.estimatedLifespanHours) || 6000))
+    setRatedPowerWatts(String(Number(eq.ratedPowerWatts) || 350))
+    setAvgPowerWatts(String(Number(eq.avgPowerWatts) || 120))
+    setAnnualMaintenanceCost(Number(eq.annualMaintenanceCost) || 0)
+    setAnnualUsageHours(String(Number(eq.annualUsageHours) || 1500))
+    setBuildVolumeX(eq.buildVolumeX != null ? String(eq.buildVolumeX) : '')
+    setBuildVolumeY(eq.buildVolumeY != null ? String(eq.buildVolumeY) : '')
+    setBuildVolumeZ(eq.buildVolumeZ != null ? String(eq.buildVolumeZ) : '')
+    setMaxSpeedMmS(eq.maxSpeedMmS != null ? String(eq.maxSpeedMmS) : '')
+    setStatus(eq.status); setNotes(eq.notes ?? '')
+    setDrawerOpen(true)
   }
 
   useEffect(() => {
     if (!focusEquipmentId || list.length === 0 || editingId === focusEquipmentId) return
-    const target = list.find((item) => item.id === focusEquipmentId)
-    if (target) startEdit(target)
+    const target = list.find((e) => e.id === focusEquipmentId)
+    if (target) openEdit(target)
   }, [focusEquipmentId, list, editingId])
 
   const buildPayload = () => {
-    const payload: Record<string, unknown> = {
-      name: name.trim(), model: model.trim(),
-      serialNumber: serialNumber.trim() || undefined,
+    const p: Record<string, unknown> = {
+      name: name.trim(), model: model.trim(), serialNumber: serialNumber.trim() || undefined,
       purchasePrice: Math.max(0, purchasePrice || 0), purchaseDate,
       estimatedLifespanHours: Math.max(1, Number(estimatedLifespanHours) || 1),
       ratedPowerWatts: Math.max(1, Number(ratedPowerWatts) || 1),
       avgPowerWatts: Math.max(1, Number(avgPowerWatts) || 1),
-      status,
-      annualMaintenanceCost: Math.max(0, annualMaintenanceCost || 0),
+      status, annualMaintenanceCost: Math.max(0, annualMaintenanceCost || 0),
       annualUsageHours: Math.max(1, Number(annualUsageHours) || 1),
       notes: notes.trim() || undefined,
     }
-    const vx = parseOptionalInt(buildVolumeX); if (vx !== undefined) payload.buildVolumeX = Math.max(vx, 1)
-    const vy = parseOptionalInt(buildVolumeY); if (vy !== undefined) payload.buildVolumeY = Math.max(vy, 1)
-    const vz = parseOptionalInt(buildVolumeZ); if (vz !== undefined) payload.buildVolumeZ = Math.max(vz, 1)
-    const sp = parseOptionalInt(maxSpeedMmS);  if (sp !== undefined) payload.maxSpeedMmS  = Math.max(sp, 1)
-    return payload
+    const vx = parseOptionalInt(buildVolumeX); if (vx !== undefined) p.buildVolumeX = Math.max(vx, 1)
+    const vy = parseOptionalInt(buildVolumeY); if (vy !== undefined) p.buildVolumeY = Math.max(vy, 1)
+    const vz = parseOptionalInt(buildVolumeZ); if (vz !== undefined) p.buildVolumeZ = Math.max(vz, 1)
+    const sp = parseOptionalInt(maxSpeedMmS); if (sp !== undefined) p.maxSpeedMmS = Math.max(sp, 1)
+    return p
   }
 
   const save = useMutation({
-    mutationFn: (p: { id?: string; data: ReturnType<typeof buildPayload> }) =>
-      p.id
-        ? equipmentService.update(p.id, p.data as Parameters<typeof equipmentService.update>[1])
-        : equipmentService.create(p.data as Parameters<typeof equipmentService.create>[0]),
+    mutationFn: (payload: { id?: string; data: ReturnType<typeof buildPayload> }) =>
+      payload.id
+        ? equipmentService.update(payload.id, payload.data as Parameters<typeof equipmentService.update>[1])
+        : equipmentService.create(payload.data as Parameters<typeof equipmentService.create>[0]),
     onSuccess: (_, p) => {
       toast.success(p.id ? 'Equipamento atualizado' : 'Equipamento criado')
-      resetForm()
+      setDrawerOpen(false)
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
     },
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao salvar equipamento')),
@@ -113,62 +115,68 @@ export function EquipmentPage() {
 
   const remove = useMutation({
     mutationFn: (id: string) => equipmentService.remove(id),
-    onSuccess: () => {
-      toast.success('Equipamento removido')
-      setPendingDelete(null)
-      queryClient.invalidateQueries({ queryKey: ['equipment'] })
-    },
+    onSuccess: () => { toast.success('Equipamento removido'); setPendingDelete(null); queryClient.invalidateQueries({ queryKey: ['equipment'] }) },
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao remover equipamento')),
   })
 
   const canSubmit = !!name.trim() && !!model.trim() && !!purchaseDate
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <Card className="col-span-2" padding={false}>
-        <div className="px-4 py-3" style={{ borderBottom: `1px solid ${NEX.border}` }}>
-          <div className="text-[13px] font-semibold">Equipamentos</div>
-          <div className="text-[11px]" style={{ color: NEX.textDim }}>Cadastro e gestão operacional das impressoras.</div>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 h-9 px-3 rounded-md flex-1 max-w-xs" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+          <Icon d={Icons.search} size={13} style={{ color: NEX.textMute }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar equipamento..." className="bg-transparent flex-1 text-[12.5px] focus:outline-none" style={{ color: NEX.text }} />
+          {search && <button onClick={() => setSearch('')} style={{ color: NEX.textMute }}><Icon d={Icons.x} size={12} /></button>}
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11.5px]" style={{ color: NEX.textMute }}>{filtered.length} {filtered.length === 1 ? 'equipamento' : 'equipamentos'}</span>
+          <Btn kind="primary" size="md" icon={Icons.plus} onClick={openCreate}>Novo equipamento</Btn>
+        </div>
+      </div>
+
+      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${NEX.border}`, background: NEX.surface }}>
         <table className="w-full text-[12.5px]">
           <thead>
-            <tr style={{ borderTop: `1px solid ${NEX.border}` }}>
+            <tr style={{ borderBottom: `1px solid ${NEX.border}` }}>
               {['Equipamento', 'Status', 'Vida útil', 'Potência média', 'Manutenção anual', ''].map((h) => (
-                <th key={h} className="px-4 py-2 text-left font-medium" style={{ color: NEX.textDim }}>{h}</th>
+                <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: NEX.textMute }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {list.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-[12px]" style={{ color: NEX.textMute }}>Nenhum equipamento cadastrado.</td></tr>
+            {filtered.length === 0 && (
+              <tr><td colSpan={6}>
+                <div className="flex flex-col items-center justify-center py-14" style={{ color: NEX.textMute }}>
+                  <Icon d={Icons.printer} size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
+                  <p className="text-[13px]">{search ? `Nenhum resultado para "${search}"` : 'Nenhum equipamento cadastrado.'}</p>
+                  {!search && <Btn kind="ghost" size="sm" icon={Icons.plus} className="mt-4" onClick={openCreate}>Adicionar primeiro equipamento</Btn>}
+                </div>
+              </td></tr>
             )}
-            {list.map((equipment) => {
-              const lifePct = (equipment.estimatedLifespanHours ?? 0) > 0
-                ? Math.min(100, (Number(equipment.totalPrintHours) / Number(equipment.estimatedLifespanHours)) * 100)
-                : 0
+            {filtered.map((eq) => {
+              const lifePct = (eq.estimatedLifespanHours ?? 0) > 0 ? Math.min(100, (Number(eq.totalPrintHours) / Number(eq.estimatedLifespanHours)) * 100) : 0
               const tone = lifePct >= 95 ? 'red' : lifePct >= 85 ? 'amber' : lifePct >= 70 ? 'cyan' : 'green'
-              const statusInfo = EQUIPMENT_STATUS[equipment.status] ?? EQUIPMENT_STATUS.AVAILABLE
+              const statusInfo = EQUIPMENT_STATUS[eq.status] ?? EQUIPMENT_STATUS.AVAILABLE
               return (
-                <tr key={equipment.id} style={{ borderTop: `1px solid ${NEX.border}` }}>
+                <tr key={eq.id} className="group" style={{ borderTop: `1px solid ${NEX.border}` }}>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{equipment.name}</div>
-                    <div className="text-[11px]" style={{ color: NEX.textDim }}>{equipment.brand?.name ?? '—'} · {equipment.model ?? 'sem modelo'}</div>
+                    <div className="font-medium" style={{ color: NEX.text }}>{eq.name}</div>
+                    <div className="text-[11px]" style={{ color: NEX.textDim }}>{eq.brand?.name ?? '—'} · {eq.model ?? 'sem modelo'}</div>
                   </td>
-                  <td className="px-2"><Pill tone={statusInfo.tone} dot={equipment.status === 'PRINTING'}>{statusInfo.label}</Pill></td>
+                  <td className="px-2"><Pill tone={statusInfo.tone} dot={eq.status === 'PRINTING'}>{statusInfo.label}</Pill></td>
                   <td className="px-2">
                     <div className="w-28">
-                      <div className="flex items-center justify-between text-[11px] mb-1">
-                        <span style={{ color: NEX.textDim }}>{lifePct.toFixed(0)}%</span>
-                      </div>
+                      <div className="flex justify-between text-[11px] mb-1"><span style={{ color: NEX.textDim }}>{lifePct.toFixed(0)}%</span></div>
                       <Bar value={lifePct} tone={tone} height={3} />
                     </div>
                   </td>
-                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{Number(equipment.avgPowerWatts)}W</td>
-                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}><Money value={Number(equipment.annualMaintenanceCost)} /></td>
+                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{Number(eq.avgPowerWatts)}W</td>
+                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}><Money value={Number(eq.annualMaintenanceCost)} /></td>
                   <td className="px-4 text-right">
-                    <div className="inline-flex items-center gap-3">
-                      <button onClick={() => startEdit(equipment)} className="text-[11px]" style={{ color: NEX.cyan }}>Alterar</button>
-                      <button onClick={() => setPendingDelete(equipment)} className="text-[11px]" style={{ color: NEX.red }}>Excluir</button>
+                    <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ActionBtn color={NEX.cyan} title="Editar" onClick={() => openEdit(eq)}><Icon d={Icons.edit} size={12} /></ActionBtn>
+                      <ActionBtn color={NEX.red} title="Excluir" onClick={() => setPendingDelete(eq)}><Icon d={Icons.trash} size={12} /></ActionBtn>
                     </div>
                   </td>
                 </tr>
@@ -176,63 +184,82 @@ export function EquipmentPage() {
             })}
           </tbody>
         </table>
-      </Card>
+      </div>
 
-      <Card>
-        <div className="text-[13px] font-semibold mb-3">{editingId ? 'Alterar equipamento' : 'Novo equipamento'}</div>
-        <div className="space-y-3">
-          <ResourceField label="Nome *"><input value={name} onChange={(e) => setName(e.target.value)} className={resourceInputCls} placeholder="Ex.: Creality K1" /></ResourceField>
-          <ResourceField label="Modelo *"><input value={model} onChange={(e) => setModel(e.target.value)} className={resourceInputCls} placeholder="Ex.: K1 Max" /></ResourceField>
-          <ResourceField label="Número de série"><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className={resourceInputCls} /></ResourceField>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Compra (R$) *"><DecimalRtlInput value={purchasePrice} onValueChange={setPurchasePrice} min={0} className={resourceInputCls + ' tabular-nums'} /></ResourceField>
-            <ResourceField label="Data da compra *"><input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={resourceInputCls} /></ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Vida útil (h) *"><input type="number" min={1} step="1" value={estimatedLifespanHours} onChange={(e) => setEstimatedLifespanHours(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-            <ResourceField label="Uso anual (h) *"><input type="number" min={1} step="1" value={annualUsageHours} onChange={(e) => setAnnualUsageHours(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Potência nominal (W) *"><input type="number" min={1} step="1" value={ratedPowerWatts} onChange={(e) => setRatedPowerWatts(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-            <ResourceField label="Potência média (W) *"><input type="number" min={1} step="1" value={avgPowerWatts} onChange={(e) => setAvgPowerWatts(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Manutenção anual (R$) *"><DecimalRtlInput value={annualMaintenanceCost} onValueChange={setAnnualMaintenanceCost} min={0} className={resourceInputCls + ' tabular-nums'} /></ResourceField>
-            <ResourceField label="Status *">
-              <select value={status} onChange={(e) => setStatus(e.target.value as Equipment['status'])} className={resourceInputCls}>
-                <option value="AVAILABLE">Disponível</option>
-                <option value="PRINTING">Imprimindo</option>
-                <option value="MAINTENANCE">Manutenção</option>
-                <option value="OFFLINE">Offline</option>
-              </select>
-            </ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Volume X (mm)"><input type="number" min={1} step="1" value={buildVolumeX} onChange={(e) => setBuildVolumeX(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-            <ResourceField label="Volume Y (mm)"><input type="number" min={1} step="1" value={buildVolumeY} onChange={(e) => setBuildVolumeY(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Volume Z (mm)"><input type="number" min={1} step="1" value={buildVolumeZ} onChange={(e) => setBuildVolumeZ(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-            <ResourceField label="Velocidade máx. (mm/s)"><input type="number" min={1} step="1" value={maxSpeedMmS} onChange={(e) => setMaxSpeedMmS(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
-          </div>
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'Editar equipamento' : 'Novo equipamento'} width={460}>
+        <div className="space-y-4">
+          <Section label="Identificação">
+            <ResourceField label="Nome *"><input value={name} onChange={(e) => setName(e.target.value)} className={resourceInputCls} placeholder="Ex.: Creality K1" autoFocus /></ResourceField>
+            <ResourceField label="Modelo *"><input value={model} onChange={(e) => setModel(e.target.value)} className={resourceInputCls} placeholder="Ex.: K1 Max" /></ResourceField>
+            <ResourceField label="Número de série"><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className={resourceInputCls} /></ResourceField>
+          </Section>
+          <Section label="Aquisição">
+            <div className="grid grid-cols-2 gap-3">
+              <ResourceField label="Compra (R$) *"><DecimalRtlInput value={purchasePrice} onValueChange={setPurchasePrice} min={0} className={resourceInputCls + ' tabular-nums'} /></ResourceField>
+              <ResourceField label="Data da compra *"><input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={resourceInputCls} /></ResourceField>
+            </div>
+          </Section>
+          <Section label="Operação">
+            <div className="grid grid-cols-2 gap-3">
+              <ResourceField label="Vida útil (h) *"><input type="number" min={1} value={estimatedLifespanHours} onChange={(e) => setEstimatedLifespanHours(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Uso anual (h) *"><input type="number" min={1} value={annualUsageHours} onChange={(e) => setAnnualUsageHours(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Potência nominal (W) *"><input type="number" min={1} value={ratedPowerWatts} onChange={(e) => setRatedPowerWatts(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Potência média (W) *"><input type="number" min={1} value={avgPowerWatts} onChange={(e) => setAvgPowerWatts(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Manutenção anual (R$) *"><DecimalRtlInput value={annualMaintenanceCost} onValueChange={setAnnualMaintenanceCost} min={0} className={resourceInputCls + ' tabular-nums'} /></ResourceField>
+              <ResourceField label="Status *">
+                <select value={status} onChange={(e) => setStatus(e.target.value as Equipment['status'])} className={resourceInputCls}>
+                  <option value="AVAILABLE">Disponível</option>
+                  <option value="PRINTING">Imprimindo</option>
+                  <option value="MAINTENANCE">Manutenção</option>
+                  <option value="OFFLINE">Offline</option>
+                </select>
+              </ResourceField>
+            </div>
+          </Section>
+          <Section label="Volume de impressão (mm)">
+            <div className="grid grid-cols-3 gap-3">
+              <ResourceField label="X"><input type="number" min={1} value={buildVolumeX} onChange={(e) => setBuildVolumeX(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Y"><input type="number" min={1} value={buildVolumeY} onChange={(e) => setBuildVolumeY(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+              <ResourceField label="Z"><input type="number" min={1} value={buildVolumeZ} onChange={(e) => setBuildVolumeZ(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+            </div>
+            <ResourceField label="Velocidade máx. (mm/s)"><input type="number" min={1} value={maxSpeedMmS} onChange={(e) => setMaxSpeedMmS(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+          </Section>
           <ResourceField label="Observações"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full min-h-[68px] px-3 py-2 bg-transparent text-[13px] focus:outline-none resize-y" /></ResourceField>
-          <div className="flex gap-2">
-            {editingId && <Btn kind="ghost" size="md" className="flex-1 justify-center" onClick={resetForm}>Cancelar alteração</Btn>}
-            <Btn kind="primary" size="md" icon={editingId ? Icons.check : Icons.plus} className={(editingId ? 'flex-1' : 'w-full') + ' justify-center'} disabled={!canSubmit || save.isPending} onClick={() => { if (canSubmit) save.mutate({ id: editingId ?? undefined, data: buildPayload() }) }}>
+          <div className="flex flex-col gap-2 pt-1">
+            <Btn kind="primary" size="md" icon={editingId ? Icons.check : Icons.plus} className="w-full justify-center" disabled={!canSubmit || save.isPending}
+              onClick={() => { if (canSubmit) save.mutate({ id: editingId ?? undefined, data: buildPayload() }) }}>
               {editingId ? 'Salvar alterações' : 'Criar equipamento'}
             </Btn>
+            <Btn kind="ghost" size="md" className="w-full justify-center" onClick={() => setDrawerOpen(false)}>Cancelar</Btn>
           </div>
         </div>
-      </Card>
+      </Drawer>
 
-      <ConfirmDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
-        title="Excluir equipamento?"
-        description={pendingDelete ? `Esta ação removerá permanentemente o equipamento "${pendingDelete.name}".` : 'Esta ação removerá permanentemente o equipamento selecionado.'}
+      <ConfirmDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null) }}
+        title="Excluir equipamento?" description={pendingDelete ? `Esta ação removerá permanentemente "${pendingDelete.name}".` : ''}
         confirmLabel="Excluir" variant="danger" loading={remove.isPending}
-        onConfirm={() => { if (!pendingDelete) return; remove.mutate(pendingDelete.id) }}
-      />
+        onConfirm={() => { if (pendingDelete) remove.mutate(pendingDelete.id) }} />
     </div>
+  )
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: NEX.textMute }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
+function ActionBtn({ children, color, title, onClick, disabled }: { children: React.ReactNode; color: string; title: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className="h-7 w-7 rounded flex items-center justify-center transition-colors disabled:opacity-30"
+      style={{ color, background: 'transparent' }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = nexAlpha('surface2', 1) }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+      {children}
+    </button>
   )
 }

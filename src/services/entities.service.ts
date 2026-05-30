@@ -9,6 +9,9 @@ import type {
   PaginatedResult, Alert,
   FilamentType, Color, Brand, AccessoryCategory, Unit, MaterialCategory,
   SalesChannel, SaleOrder, CustomerType,
+  PrintFailure, PrintFailureAnalytics, MaintenanceLog,
+  ProfitabilityByProductRow, ProfitabilityByCustomerRow, ProfitabilityReport,
+  TraceabilityResult,
 } from '@/types/api.types'
 
 // ── Suppliers ──────────────────────────────────────────────────
@@ -358,3 +361,55 @@ export const salesService = {
   updateStatus: (id: string, status: string) =>
     api.patch<{ data: SaleOrder }>(`/sales/${id}/status`, { status }).then(unwrap),
 }
+
+// ── Reports — Profitability ────────────────────────────────────
+export const profitabilityService = {
+  byProduct: (params?: { from?: string; to?: string }) =>
+    api.get<{ data: ProfitabilityReport<ProfitabilityByProductRow> }>('/reports/profitability/by-product', { params }).then(unwrap),
+  byCustomer: (params?: { from?: string; to?: string }) =>
+    api.get<{ data: ProfitabilityReport<ProfitabilityByCustomerRow> }>('/reports/profitability/by-customer', { params }).then(unwrap),
+  byChannel: (params?: { from?: string; to?: string }) =>
+    api.get<{ data: unknown }>('/reports/pnl/by-channel', { params }).then(unwrap),
+}
+
+// ── Traceability ───────────────────────────────────────────────
+export const traceabilityService = {
+  searchLot: (q: string) =>
+    api.get<{ data: MaterialStock[] }>('/materials/lots/search', { params: { q } }).then(unwrap),
+  getByStock: (stockId: string) =>
+    api.get<{ data: TraceabilityResult }>(`/materials/stock/${stockId}/traceability`).then(unwrap),
+}
+
+// ── Print Failures ─────────────────────────────────────────────
+export const printFailuresService = {
+  findAll: (params?: {
+    page?: number; limit?: number;
+    equipmentId?: string; materialId?: string; productId?: string;
+    failureCategory?: string; failureSeverity?: string;
+    from?: string; to?: string;
+  }) =>
+    api.get<{ data: PaginatedResult<PrintFailure> }>('/print-failures', { params }).then(unwrap),
+  findOne: (id: string) =>
+    api.get<{ data: PrintFailure }>(`/print-failures/${id}`).then(unwrap),
+  create: (data: unknown) =>
+    api.post<{ data: PrintFailure }>('/print-failures', data).then(unwrap),
+  update: (id: string, data: unknown) =>
+    api.put<{ data: PrintFailure }>(`/print-failures/${id}`, data).then(unwrap),
+  remove: (id: string) =>
+    api.delete(`/print-failures/${id}`),
+  getAnalytics: (params?: { from?: string; to?: string }) =>
+    api.get<{ data: PrintFailureAnalytics }>('/print-failures/analytics', { params }).then(unwrap),
+}
+
+// ── Maintenance Logs ────────────────────────────────────────────
+export const maintenanceService = {
+  findAll: (params?: { page?: number; limit?: number }) =>
+    api.get<{ data: PaginatedResult<MaintenanceLog> }>('/equipment/maintenance-logs', { params }).then(unwrap),
+  findByEquipment: (equipmentId: string, params?: { page?: number; limit?: number }) =>
+    api.get<{ data: PaginatedResult<MaintenanceLog> }>(`/equipment/${equipmentId}/maintenance-log`, { params }).then(unwrap),
+  create: (equipmentId: string, data: {
+    description: string; cost?: number; performedAt: string; nextDueAt?: string; notes?: string;
+  }) =>
+    api.post<{ data: MaintenanceLog }>(`/equipment/${equipmentId}/maintenance-log`, data).then(unwrap),
+}
+

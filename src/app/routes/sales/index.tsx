@@ -28,6 +28,7 @@ export function SalesPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState<typeof STATUS_TABS[number]['id']>('all')
+  const [search, setSearch] = useState('')
 
   const { data: salesRes } = useQuery({
     queryKey: ['sales', 'list', statusFilter],
@@ -37,7 +38,16 @@ export function SalesPage() {
       status: statusFilter === 'all' ? undefined : statusFilter,
     }),
   })
-  const sales: SaleOrder[] = salesRes?.data ?? []
+  const allSales: SaleOrder[] = salesRes?.data ?? []
+  const sales = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return allSales
+    return allSales.filter((s) =>
+      s.orderNumber.toLowerCase().includes(q) ||
+      (s.customer?.name ?? '').toLowerCase().includes(q) ||
+      (s.channel?.name ?? '').toLowerCase().includes(q),
+    )
+  }, [allSales, search])
 
   const counts = useMemo(() => {
     const all = salesRes?.meta?.total ?? sales.length
@@ -66,6 +76,11 @@ export function SalesPage() {
               )}
             </button>
           ))}
+        </div>
+        <div className="flex items-center gap-2 h-8 px-3 rounded-md" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+          <Icon d={Icons.search} size={13} style={{ color: NEX.textMute }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nº pedido, cliente..." className="bg-transparent text-[12.5px] focus:outline-none w-44" style={{ color: NEX.text }} />
+          {search && <button onClick={() => setSearch('')} style={{ color: NEX.textMute }}><Icon d={Icons.x} size={12} /></button>}
         </div>
         <div className="ml-auto">
           <Btn kind="primary" size="sm" icon={Icons.plus} onClick={() => setSearchParams({ new: '1' })}>

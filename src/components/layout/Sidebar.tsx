@@ -38,25 +38,31 @@ export function Sidebar() {
     {
       label: 'Produção',
       items: [
-        { id: 'production',   label: 'Produção',       icon: Icons.printer,  path: '/production' },
-        { id: 'products',     label: 'Produtos',       icon: Icons.pkg,      path: '/products' },
+        { id: 'production',   label: 'Produção',        icon: Icons.printer,  path: '/production' },
+        { id: 'failures',     label: 'Falhas',          icon: Icons.alert,    path: '/production/failures' },
+        { id: 'maintenance',  label: 'Manutenção',      icon: Icons.clock,    path: '/production/maintenance' },
+        { id: 'products',     label: 'Produtos',        icon: Icons.pkg,      path: '/products' },
         { id: 'equipment',    label: 'Equipamentos',   icon: Icons.printer,  path: '/resources/equipment' },
         { id: 'materials',    label: 'Matéria-prima',  icon: Icons.spool,    path: '/resources/materials' },
-        { id: 'accessories',  label: 'Acessórios',     icon: Icons.pkg,      path: '/resources/accessories' },
+        { id: 'accessories',    label: 'Acessórios',      icon: Icons.pkg,      path: '/resources/accessories' },
+        { id: 'traceability',   label: 'Rastreabilidade', icon: Icons.history,  path: '/resources/traceability' },
       ],
     },
     {
       label: 'Financeiro',
       items: [
-        { id: 'calc',         label: 'Calculadora',    icon: Icons.calc,     path: '/calculator' },
-        { id: 'reports',      label: 'Relatórios',     icon: Icons.trendUp,  path: '/reports' },
-        { id: 'cost-center',  label: 'Centro de custo', icon: Icons.cog,    path: '/settings/cost-center' },
+        { id: 'calc',            label: 'Calculadora',    icon: Icons.calc,     path: '/calculator' },
+        { id: 'reports',         label: 'Relatórios',     icon: Icons.trendUp,  path: '/reports' },
+        { id: 'profitability',   label: 'Rentabilidade',  icon: Icons.zap,      path: '/reports/profitability' },
+        { id: 'cost-center',     label: 'Centro de custo', icon: Icons.cog,     path: '/settings/cost-center' },
       ],
     },
     {
       label: 'Configurações',
       items: [
-        { id: 'colors', label: 'Cores', icon: Icons.spool, path: '/settings/colors' },
+        { id: 'categories',           label: 'Categ. de produto',   icon: Icons.layers, path: '/settings/categories' },
+        { id: 'accessory-categories', label: 'Categ. de acessório', icon: Icons.pkg,    path: '/settings/accessory-categories' },
+        { id: 'colors',               label: 'Cores',               icon: Icons.spool,  path: '/settings/colors' },
       ],
     },
   ]

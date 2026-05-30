@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Card, Icons, Money, NEX, Btn } from '@/lib/nex'
+import { Icons, Icon, Money, NEX, Btn, nexAlpha } from '@/lib/nex'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Drawer } from '@/components/ui/drawer'
 import { DecimalRtlInput } from '@/components/ui/decimal-rtl-input'
 import { accessoriesService, domainService, suppliersService } from '@/services/entities.service'
 import type { Accessory, AccessoryCategory, Unit, Supplier } from '@/types/api.types'
@@ -11,15 +12,10 @@ import { ResourceField, resourceInputCls, getApiMessage } from './_shared'
 
 type PurchaseModeOption = 'UNIT' | 'PACK' | 'BOX' | 'ROLL' | 'CUSTOM'
 const PURCHASE_MODES: Array<{ value: PurchaseModeOption; label: string }> = [
-  { value: 'UNIT', label: 'Unidade' },
-  { value: 'PACK', label: 'Pacote' },
-  { value: 'BOX',  label: 'Caixa' },
-  { value: 'ROLL', label: 'Rolo' },
-  { value: 'CUSTOM', label: 'Personalizado' },
+  { value: 'UNIT', label: 'Unidade' }, { value: 'PACK', label: 'Pacote' },
+  { value: 'BOX', label: 'Caixa' }, { value: 'ROLL', label: 'Rolo' }, { value: 'CUSTOM', label: 'Personalizado' },
 ]
-function isPurchaseModeOption(value: string): value is PurchaseModeOption {
-  return PURCHASE_MODES.some((o) => o.value === value)
-}
+function isPurchaseModeOption(v: string): v is PurchaseModeOption { return PURCHASE_MODES.some((o) => o.value === v) }
 
 export function AccessoriesPage() {
   const [searchParams] = useSearchParams()
@@ -29,8 +25,8 @@ export function AccessoriesPage() {
   const { data: res } = useQuery({ queryKey: ['accessories', 'list', 'full'], queryFn: () => accessoriesService.findAll({ limit: 200 }) })
   const list: Accessory[] = res?.data ?? []
 
-  const { data: accessoryCategoriesRes = [] } = useQuery({ queryKey: ['domain', 'accessory-categories'], queryFn: () => domainService.getAccessoryCategories() })
-  const accessoryCategories: AccessoryCategory[] = accessoryCategoriesRes
+  const { data: categoriesRes = [] } = useQuery({ queryKey: ['domain', 'accessory-categories'], queryFn: () => domainService.getAccessoryCategories() })
+  const accessoryCategories: AccessoryCategory[] = categoriesRes
 
   const { data: unitsRes = [] } = useQuery({ queryKey: ['domain', 'units'], queryFn: () => domainService.getUnits() })
   const units: Unit[] = unitsRes
@@ -38,8 +34,11 @@ export function AccessoriesPage() {
   const { data: suppliersRes = [] } = useQuery({ queryKey: ['suppliers', 'list', 'for-accessories'], queryFn: () => suppliersService.findAll({ limit: 200 }).then((p) => p.data) })
   const suppliers: Supplier[] = suppliersRes
 
+  const [search, setSearch] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Accessory | null>(null)
+
   const [name, setName] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [unitId, setUnitId] = useState('')
@@ -50,50 +49,51 @@ export function AccessoriesPage() {
   const [stockQuantity, setStockQuantity] = useState('0')
   const [minStockAlert, setMinStockAlert] = useState('0')
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((a) => a.name.toLowerCase().includes(q) || (a.category?.name ?? '').toLowerCase().includes(q) || (a.supplier?.name ?? '').toLowerCase().includes(q))
+  }, [list, search])
+
   const resetForm = () => {
     setEditingId(null); setName(''); setCategoryId(''); setUnitId(''); setSupplierId('')
-    setPurchaseMode('UNIT'); setPurchaseQuantity('100'); setPurchaseCost(80)
-    setStockQuantity('0'); setMinStockAlert('0')
+    setPurchaseMode('UNIT'); setPurchaseQuantity('100'); setPurchaseCost(80); setStockQuantity('0'); setMinStockAlert('0')
   }
 
-  const startEdit = (accessory: Accessory) => {
-    setEditingId(accessory.id); setName(accessory.name ?? '')
-    setCategoryId(accessory.categoryId ?? ''); setUnitId(accessory.unitId ?? '')
-    setSupplierId(accessory.supplierId ?? '')
-    setPurchaseMode(isPurchaseModeOption(accessory.purchaseMode) ? accessory.purchaseMode : 'UNIT')
-    setPurchaseQuantity(String(Number(accessory.purchaseQuantity) || 1))
-    setPurchaseCost(Number(accessory.purchaseCost) || 0)
-    setStockQuantity(String(Number(accessory.stockQuantity) || 0))
-    setMinStockAlert(accessory.minStockAlert != null ? String(Number(accessory.minStockAlert)) : '0')
+  const openCreate = () => { resetForm(); setDrawerOpen(true) }
+
+  const openEdit = (a: Accessory) => {
+    setEditingId(a.id); setName(a.name ?? ''); setCategoryId(a.categoryId ?? ''); setUnitId(a.unitId ?? '')
+    setSupplierId(a.supplierId ?? ''); setPurchaseMode(isPurchaseModeOption(a.purchaseMode) ? a.purchaseMode : 'UNIT')
+    setPurchaseQuantity(String(Number(a.purchaseQuantity) || 1)); setPurchaseCost(Number(a.purchaseCost) || 0)
+    setStockQuantity(String(Number(a.stockQuantity) || 0)); setMinStockAlert(a.minStockAlert != null ? String(Number(a.minStockAlert)) : '0')
+    setDrawerOpen(true)
   }
 
   useEffect(() => {
     if (!focusAccessoryId || list.length === 0 || editingId === focusAccessoryId) return
-    const target = list.find((item) => item.id === focusAccessoryId)
-    if (target) startEdit(target)
+    const target = list.find((a) => a.id === focusAccessoryId)
+    if (target) openEdit(target)
   }, [focusAccessoryId, list, editingId])
 
   const buildPayload = () => {
-    const payload: Record<string, unknown> = {
-      name: name.trim(),
-      categoryId: categoryId || undefined,
-      unitId: unitId || undefined,
-      supplierId: supplierId || undefined,
-      purchaseMode,
+    const p: Record<string, unknown> = {
+      name: name.trim(), categoryId: categoryId || undefined, unitId: unitId || undefined,
+      supplierId: supplierId || undefined, purchaseMode,
       purchaseQuantity: Math.max(0.001, Number(purchaseQuantity) || 0.001),
       purchaseCost: Math.max(0, purchaseCost || 0),
     }
-    const sq = Number(stockQuantity); if (Number.isFinite(sq)) payload.stockQuantity = Math.max(0, sq)
-    const ms = Number(minStockAlert); if (Number.isFinite(ms)) payload.minStockAlert = Math.max(0, ms)
-    return payload
+    const sq = Number(stockQuantity); if (Number.isFinite(sq)) p.stockQuantity = Math.max(0, sq)
+    const ms = Number(minStockAlert); if (Number.isFinite(ms)) p.minStockAlert = Math.max(0, ms)
+    return p
   }
 
   const save = useMutation({
-    mutationFn: (p: { id?: string; data: ReturnType<typeof buildPayload> }) =>
-      p.id ? accessoriesService.update(p.id, p.data) : accessoriesService.create(p.data),
+    mutationFn: (payload: { id?: string; data: ReturnType<typeof buildPayload> }) =>
+      payload.id ? accessoriesService.update(payload.id, payload.data) : accessoriesService.create(payload.data),
     onSuccess: (_, p) => {
       toast.success(p.id ? 'Acessório atualizado' : 'Acessório criado')
-      resetForm()
+      setDrawerOpen(false)
       queryClient.invalidateQueries({ queryKey: ['accessories'] })
     },
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao salvar acessório')),
@@ -101,56 +101,67 @@ export function AccessoriesPage() {
 
   const remove = useMutation({
     mutationFn: (id: string) => accessoriesService.remove(id),
-    onSuccess: () => {
-      toast.success('Acessório removido')
-      setPendingDelete(null)
-      queryClient.invalidateQueries({ queryKey: ['accessories'] })
-    },
+    onSuccess: () => { toast.success('Acessório removido'); setPendingDelete(null); queryClient.invalidateQueries({ queryKey: ['accessories'] }) },
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao remover acessório')),
   })
 
   const canSubmit = !!name.trim() && Number.isFinite(Number(purchaseQuantity)) && Number(purchaseQuantity) > 0 && purchaseCost >= 0
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <Card className="col-span-2" padding={false}>
-        <div className="px-4 py-3" style={{ borderBottom: `1px solid ${NEX.border}` }}>
-          <div className="text-[13px] font-semibold">Acessórios</div>
-          <div className="text-[11px]" style={{ color: NEX.textDim }}>Cadastro e gestão de acessórios e insumos.</div>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 h-9 px-3 rounded-md flex-1 max-w-xs" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+          <Icon d={Icons.search} size={13} style={{ color: NEX.textMute }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar acessório..." className="bg-transparent flex-1 text-[12.5px] focus:outline-none" style={{ color: NEX.text }} />
+          {search && <button onClick={() => setSearch('')} style={{ color: NEX.textMute }}><Icon d={Icons.x} size={12} /></button>}
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11.5px]" style={{ color: NEX.textMute }}>{filtered.length} {filtered.length === 1 ? 'acessório' : 'acessórios'}</span>
+          <Btn kind="primary" size="md" icon={Icons.plus} onClick={openCreate}>Novo acessório</Btn>
+        </div>
+      </div>
+
+      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${NEX.border}`, background: NEX.surface }}>
         <table className="w-full text-[12.5px]">
           <thead>
-            <tr style={{ borderTop: `1px solid ${NEX.border}` }}>
+            <tr style={{ borderBottom: `1px solid ${NEX.border}` }}>
               {['Acessório', 'Categoria', 'Unidade', 'Estoque', 'Custo / un', ''].map((h) => (
-                <th key={h} className="px-4 py-2 text-left font-medium" style={{ color: NEX.textDim }}>{h}</th>
+                <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: NEX.textMute }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {list.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-[12px]" style={{ color: NEX.textMute }}>Nenhum acessório cadastrado.</td></tr>}
-            {list.map((accessory) => {
-              const stock = Number(accessory.stockQuantity)
-              const minStock = accessory.minStockAlert != null ? Number(accessory.minStockAlert) : 0
+            {filtered.length === 0 && (
+              <tr><td colSpan={6}>
+                <div className="flex flex-col items-center justify-center py-14" style={{ color: NEX.textMute }}>
+                  <Icon d={Icons.pkg} size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
+                  <p className="text-[13px]">{search ? `Nenhum resultado para "${search}"` : 'Nenhum acessório cadastrado.'}</p>
+                  {!search && <Btn kind="ghost" size="sm" icon={Icons.plus} className="mt-4" onClick={openCreate}>Adicionar primeiro acessório</Btn>}
+                </div>
+              </td></tr>
+            )}
+            {filtered.map((a) => {
+              const stock = Number(a.stockQuantity)
+              const minStock = a.minStockAlert != null ? Number(a.minStockAlert) : 0
               const isLow = minStock > 0 && stock <= minStock
               return (
-                <tr key={accessory.id} style={{ borderTop: `1px solid ${NEX.border}` }}>
+                <tr key={a.id} className="group" style={{ borderTop: `1px solid ${NEX.border}` }}>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{accessory.name}</div>
-                    <div className="text-[11px]" style={{ color: NEX.textDim }}>{accessory.supplier?.name ?? 'Sem fornecedor'}</div>
+                    <div className="font-medium" style={{ color: NEX.text }}>{a.name}</div>
+                    <div className="text-[11px]" style={{ color: NEX.textDim }}>{a.supplier?.name ?? 'Sem fornecedor'}</div>
                   </td>
-                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{accessory.category?.name ?? '—'}</td>
-                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{accessory.unit?.name ?? '—'}</td>
+                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{a.category?.name ?? '—'}</td>
+                  <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>{a.unit?.name ?? '—'}</td>
                   <td className="px-2">
                     <div className="font-mono text-[11.5px]" style={{ color: isLow ? NEX.amber : NEX.textDim }}>
-                      {stock.toFixed(3)}
-                      {minStock > 0 && <span className="text-[10px]"> / min {minStock.toFixed(3)}</span>}
+                      {stock.toFixed(3)}{minStock > 0 && <span className="text-[10px]"> / min {minStock.toFixed(3)}</span>}
                     </div>
                   </td>
-                  <td className="px-2 text-[11.5px]"><Money value={Number(accessory.costPerUnit)} muted /></td>
+                  <td className="px-2 text-[11.5px]"><Money value={Number(a.costPerUnit)} muted /></td>
                   <td className="px-4 text-right">
-                    <div className="inline-flex items-center gap-3">
-                      <button onClick={() => startEdit(accessory)} className="text-[11px]" style={{ color: NEX.cyan }}>Alterar</button>
-                      <button onClick={() => setPendingDelete(accessory)} className="text-[11px]" style={{ color: NEX.red }}>Excluir</button>
+                    <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ActionBtn color={NEX.cyan} title="Editar" onClick={() => openEdit(a)}><Icon d={Icons.edit} size={12} /></ActionBtn>
+                      <ActionBtn color={NEX.red} title="Excluir" onClick={() => setPendingDelete(a)}><Icon d={Icons.trash} size={12} /></ActionBtn>
                     </div>
                   </td>
                 </tr>
@@ -158,13 +169,12 @@ export function AccessoriesPage() {
             })}
           </tbody>
         </table>
-      </Card>
+      </div>
 
-      <Card>
-        <div className="text-[13px] font-semibold mb-3">{editingId ? 'Alterar acessório' : 'Novo acessório'}</div>
-        <div className="space-y-3">
-          <ResourceField label="Nome *"><input value={name} onChange={(e) => setName(e.target.value)} className={resourceInputCls} placeholder="Ex.: Argola chaveiro 25mm" /></ResourceField>
-          <div className="grid grid-cols-2 gap-2">
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title={editingId ? 'Editar acessório' : 'Novo acessório'}>
+        <div className="space-y-4">
+          <ResourceField label="Nome *"><input value={name} onChange={(e) => setName(e.target.value)} className={resourceInputCls} placeholder="Ex.: Argola chaveiro 25mm" autoFocus /></ResourceField>
+          <div className="grid grid-cols-2 gap-3">
             <ResourceField label="Modo de compra *">
               <select value={purchaseMode} onChange={(e) => setPurchaseMode(e.target.value as PurchaseModeOption)} className={resourceInputCls}>
                 {PURCHASE_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -176,8 +186,6 @@ export function AccessoriesPage() {
                 {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
               </select>
             </ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
             <ResourceField label="Categoria">
               <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={resourceInputCls}>
                 <option value="">Selecione (opcional)</option>
@@ -190,32 +198,37 @@ export function AccessoriesPage() {
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <ResourceField label="Quantidade por compra *"><input type="number" min={0.001} step="0.001" value={purchaseQuantity} onChange={(e) => setPurchaseQuantity(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
+            <ResourceField label="Qtd. por compra *"><input type="number" min={0.001} step="0.001" value={purchaseQuantity} onChange={(e) => setPurchaseQuantity(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
             <ResourceField label="Custo da compra (R$) *"><DecimalRtlInput value={purchaseCost} onValueChange={setPurchaseCost} min={0} className={resourceInputCls + ' tabular-nums'} /></ResourceField>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
             <ResourceField label="Estoque inicial"><input type="number" min={0} step="0.001" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
             <ResourceField label="Alerta mínimo"><input type="number" min={0} step="0.001" value={minStockAlert} onChange={(e) => setMinStockAlert(e.target.value)} className={resourceInputCls + ' text-right tabular-nums'} /></ResourceField>
           </div>
-          <div className="flex gap-2">
-            {editingId && <Btn kind="ghost" size="md" className="flex-1 justify-center" onClick={resetForm}>Cancelar alteração</Btn>}
-            <Btn kind="primary" size="md" icon={editingId ? Icons.check : Icons.plus} className={(editingId ? 'flex-1' : 'w-full') + ' justify-center'} disabled={!canSubmit || save.isPending} onClick={() => { if (canSubmit) save.mutate({ id: editingId ?? undefined, data: buildPayload() }) }}>
+          <div className="flex flex-col gap-2 pt-1">
+            <Btn kind="primary" size="md" icon={editingId ? Icons.check : Icons.plus} className="w-full justify-center" disabled={!canSubmit || save.isPending}
+              onClick={() => { if (canSubmit) save.mutate({ id: editingId ?? undefined, data: buildPayload() }) }}>
               {editingId ? 'Salvar alterações' : 'Criar acessório'}
             </Btn>
+            <Btn kind="ghost" size="md" className="w-full justify-center" onClick={() => setDrawerOpen(false)}>Cancelar</Btn>
           </div>
         </div>
-      </Card>
+      </Drawer>
 
-      <ConfirmDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
-        title="Excluir acessório?"
-        description={pendingDelete ? `Esta ação removerá permanentemente o acessório "${pendingDelete.name}".` : 'Esta ação removerá permanentemente o acessório selecionado.'}
+      <ConfirmDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null) }}
+        title="Excluir acessório?" description={pendingDelete ? `Esta ação removerá permanentemente "${pendingDelete.name}".` : ''}
         confirmLabel="Excluir" variant="danger" loading={remove.isPending}
-        onConfirm={() => { if (!pendingDelete) return; remove.mutate(pendingDelete.id) }}
-      />
+        onConfirm={() => { if (pendingDelete) remove.mutate(pendingDelete.id) }} />
     </div>
+  )
+}
+
+function ActionBtn({ children, color, title, onClick, disabled }: { children: React.ReactNode; color: string; title: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className="h-7 w-7 rounded flex items-center justify-center transition-colors disabled:opacity-30"
+      style={{ color, background: 'transparent' }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = nexAlpha('surface2', 1) }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+      {children}
+    </button>
   )
 }
