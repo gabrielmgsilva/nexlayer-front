@@ -46,6 +46,7 @@ export function CalculatorPage() {
   const presetProductId = searchParams.get('productId') ?? ''
   const presetQty = parseInt(searchParams.get('qty') ?? '0') || 0
   const presetCustomerId = searchParams.get('customerId') ?? ''
+  const presetUnitPrice = parseFloat(searchParams.get('unitPrice') ?? '') || 0
   const orderRef = searchParams.get('order') ?? ''
   const saleOrderId = searchParams.get('saleId') ?? ''
   const saleItemId = searchParams.get('saleItemId') ?? ''
@@ -80,12 +81,15 @@ export function CalculatorPage() {
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
   const [printTimeMinutes, setPrintTimeMinutes] = useState(60)
+  const [laborTimeMinutes, setLaborTimeMinutes] = useState(0)
   const [materialGrams, setMaterialGrams] = useState(50)
   const [piecesPerPrint, setPiecesPerPrint] = useState(1)
   const [quantityOrdered, setQuantityOrdered] = useState(presetQty || 1)
   const [profitMargin, setProfitMargin] = useState(50) // percent
   const [discountPercent, setDiscountPercent] = useState(0)
   const [jobAccessories, setJobAccessories] = useState<JobAccessoryInput[]>([])
+  // Preço fixo vindo da venda (substitui o calculado)
+  const [saleUnitPrice, setSaleUnitPrice] = useState(presetUnitPrice)
 
   // Load product defaults
   useEffect(() => {
@@ -191,6 +195,7 @@ export function CalculatorPage() {
         equipmentId,
         materials: stockId ? [{ materialStockId: stockId, materialGrams: Number(materialGrams) }] : undefined,
         printTimeMinutes: Number(printTimeMinutes),
+        laborTimeMinutes: laborTimeMinutes > 0 ? laborTimeMinutes : undefined,
         piecesPerPrint: Number(piecesPerPrint),
         printsNeeded,
         quantityOrdered: Number(quantityOrdered),
@@ -222,6 +227,7 @@ export function CalculatorPage() {
         quantityOrdered: Number(quantityOrdered),
         piecesPerPrint: Number(piecesPerPrint),
         printTimeMinutes: Number(printTimeMinutes),
+        laborTimeMinutes: laborTimeMinutes > 0 ? laborTimeMinutes : undefined,
         materialStockId: stockId,
         materialPerPrintG: Number(materialGrams),
         jobMaterials: [{ materialStockId: stockId, materialPerPrintG: Number(materialGrams) }],
@@ -229,10 +235,13 @@ export function CalculatorPage() {
         costConfigId,
         profitMargin: Number(profitMargin) / 100,
         discountPercent: Number(discountPercent) || undefined,
+        customUnitPrice: saleUnitPrice > 0 ? saleUnitPrice : undefined,
         batchStrategy,
         priority: Number(priority),
         dueDate: dueDate || undefined,
-        notes: notes.trim() || undefined,
+        notes: orderRef
+          ? `Venda ${orderRef}${notes.trim() ? ` · ${notes.trim()}` : ''}`
+          : notes.trim() || undefined,
         saleOrderId: saleOrderId || undefined,
         saleItemId: saleItemId || undefined,
       }
@@ -304,19 +313,35 @@ export function CalculatorPage() {
   const canCreateJob = !!(result && productId && equipmentId && stockId && costConfigId && printTimeMinutes > 0 && materialGrams > 0 && quantityOrdered > 0 && !hasInvalidAccessories)
 
   return (
-    <div className="px-8 py-6 grid grid-cols-5 gap-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 grid grid-cols-1 lg:grid-cols-5 gap-5">
       {/* LEFT — inputs */}
-      <div className="col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-4">
         {orderRef && (
-          <div className="rounded-md p-3 flex items-center gap-2 text-[12px]" style={{ background: NEX.cyanDim, border: `1px solid rgba(0,217,255,0.25)` }}>
-            <Icon d={Icons.cart} size={13} style={{ color: NEX.cyan }} />
-            <div>
+          <div className="rounded-md p-3 space-y-1.5 text-[12px]" style={{ background: NEX.cyanDim, border: `1px solid rgba(0,217,255,0.25)` }}>
+            <div className="flex items-center gap-2">
+              <Icon d={Icons.cart} size={13} style={{ color: NEX.cyan }} />
               <span style={{ color: NEX.text }}>Calculando para o pedido <strong className="font-mono">{orderRef}</strong></span>
-              {saleItemId && (
-                <div className="text-[11px] mt-0.5" style={{ color: NEX.textDim }}>
-                  Ao criar, o job será vinculado automaticamente ao item da venda.
+            </div>
+            {saleUnitPrice > 0 && (
+              <div className="flex items-center justify-between pl-5">
+                <span style={{ color: NEX.textDim }}>Preço da venda (será fixado no job)</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold tabular-nums" style={{ color: NEX.cyan }}>
+                    R$ {saleUnitPrice.toFixed(2)}/un
+                  </span>
+                  <button
+                    className="text-[10.5px] px-1.5 py-0.5 rounded"
+                    style={{ background: 'rgba(0,217,255,0.15)', color: NEX.textDim }}
+                    onClick={() => setSaleUnitPrice(0)}
+                    title="Remover preço fixo e usar preço calculado"
+                  >
+                    usar calculado
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
+            <div className="pl-5 text-[11px]" style={{ color: NEX.textDim }}>
+              Ao criar, o job será vinculado automaticamente ao item da venda.
             </div>
           </div>
         )}
@@ -339,7 +364,14 @@ export function CalculatorPage() {
             <Field label="Impressora *">
               <select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className={inputCls}>
                 <option value="">Selecionar…</option>
-                {equipment.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                {equipment
+                  .filter((e) => e.status === 'AVAILABLE')
+                  .map((e) => {
+                    const parts = [e.name]
+                    if (e.brand?.name) parts.push(e.brand.name)
+                    if (e.model) parts.push(e.model)
+                    return <option key={e.id} value={e.id}>{parts.join(' · ')}</option>
+                  })}
               </select>
             </Field>
             <Field label="Perfil de custo *">
@@ -370,11 +402,18 @@ export function CalculatorPage() {
               <Field label="Bobina *">
                 <select value={stockId} onChange={(e) => setStockId(e.target.value)} className={inputCls}>
                   <option value="">Selecionar…</option>
-                  {stocks.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.spoolLabel ?? s.lotNumber ?? s.id.slice(0, 8)} · {s.currentWeightG.toFixed(0)}g · R$ {s.costPerKg}/kg
-                    </option>
-                  ))}
+                  {stocks.map((s) => {
+                    const selectedMat = materials.find((m) => m.id === materialId)
+                    const parts: string[] = []
+                    if (s.color1?.name) parts.push(s.color1.name)
+                    if (s.color2?.name) parts.push(`+${s.color2.name}`)
+                    if (selectedMat?.brand?.name) parts.push(selectedMat.brand.name)
+                    parts.push(`${Math.trunc(Number(s.currentWeightG))}g`)
+                    parts.push(`R$ ${Number(s.costPerKg).toFixed(2)}/kg`)
+                    const ref = s.spoolLabel ?? s.lotNumber
+                    const label = ref ? `${ref} · ${parts.join(' · ')}` : parts.join(' · ')
+                    return <option key={s.id} value={s.id}>{label}</option>
+                  })}
                 </select>
               </Field>
             )}
@@ -387,6 +426,9 @@ export function CalculatorPage() {
               </Field>
               <Field label="Tempo de impressão (min) *">
                 <input type="number" min={1} value={printTimeMinutes} onChange={(e) => setPrintTimeMinutes(parseInt(e.target.value) || 1)} className={inputCls} />
+              </Field>
+              <Field label="Mão de obra por peça (min)">
+                <input type="number" min={0} value={laborTimeMinutes} onChange={(e) => setLaborTimeMinutes(Math.max(0, parseInt(e.target.value) || 0))} className={inputCls} />
               </Field>
               <Field label="Material por impressão (g) *">
                 <input type="number" step="0.1" min={0.1} value={materialGrams} onChange={(e) => setMaterialGrams(parseFloat(e.target.value) || 0)} className={inputCls} />
@@ -572,7 +614,7 @@ export function CalculatorPage() {
       </div>
 
       {/* RIGHT — result */}
-      <div className="col-span-3 space-y-4">
+      <div className="lg:col-span-3 space-y-4">
         {!result ? (
           <Card className="h-full">
             <div className="py-20 text-center">

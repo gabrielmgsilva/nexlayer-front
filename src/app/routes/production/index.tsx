@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import { Card, Btn, Pill, Icon, Icons, NEX, JOB_STATUS_TONE, EQUIPMENT_STATUS, Bar, Money, Num, nexAlpha } from '@/lib/nex'
 import { JOB_STATUS_LABELS } from '@/lib/constants'
-import { jobsService, type QueueJob, type QueueLane, type TimelineLane } from '@/services/jobs.service'
+import { jobsService, type QueueJob, type QueueLane, type TimelineLane, type QcInspection } from '@/services/jobs.service'
 import type { CostSnapshot, ProductionJob } from '@/types/api.types'
 
 type ViewMode = 'table' | 'queue' | 'timeline'
@@ -155,6 +155,38 @@ function TableView({ focusJobId }: { focusJobId?: string }) {
     },
     onError: (e: { response?: { data?: { message?: string } } }) =>
       toast.error(e.response?.data?.message ?? 'Falha ao recalcular custo'),
+  })
+
+  // QC state
+  const [qcApproved, setQcApproved] = useState(0)
+  const [qcRejected, setQcRejected] = useState(0)
+  const [qcOutcome, setQcOutcome] = useState<'APPROVED' | 'PARTIAL_APPROVED' | 'REJECTED'>('APPROVED')
+  const [qcReason, setQcReason] = useState('')
+  const [qcNotes, setQcNotes] = useState('')
+
+  const { data: qcHistory = [] } = useQuery<QcInspection[]>({
+    queryKey: ['production', 'qc-history', selectedJobId],
+    queryFn: () => jobsService.getQcHistory(selectedJobId!),
+    enabled: !!selectedJobId,
+  })
+
+  const qcMutation = useMutation({
+    mutationFn: (jobId: string) => jobsService.createQcInspection(jobId, {
+      qtyApproved: qcApproved,
+      qtyRejected: qcRejected,
+      outcome: qcOutcome,
+      reason: qcReason.trim() || undefined,
+      notes: qcNotes.trim() || undefined,
+    }),
+    onSuccess: (_data, jobId) => {
+      toast.success('Inspeção registrada')
+      setQcApproved(0); setQcRejected(0); setQcReason(''); setQcNotes('')
+      qc.invalidateQueries({ queryKey: ['production', 'table'] })
+      qc.invalidateQueries({ queryKey: ['production', 'job', jobId] })
+      qc.invalidateQueries({ queryKey: ['production', 'qc-history', jobId] })
+    },
+    onError: (e: { response?: { data?: { message?: string } } }) =>
+      toast.error(e.response?.data?.message ?? 'Falha ao registrar inspeção'),
   })
 
   const statusOptions = useMemo(() => {
@@ -327,7 +359,7 @@ function TableView({ focusJobId }: { focusJobId?: string }) {
           />
           <aside
             className="fixed top-0 right-0 bottom-0 z-40 flex flex-col"
-            style={{ width: 520, background: NEX.surface, borderLeft: `1px solid ${NEX.border}` }}
+            style={{ width: 'min(520px, 100vw)', background: NEX.surface, borderLeft: `1px solid ${NEX.border}` }}
           >
             <div className="px-5 py-4 flex items-center" style={{ borderBottom: `1px solid ${NEX.border}` }}>
               <div>
@@ -495,9 +527,92 @@ function TableView({ focusJobId }: { focusJobId?: string }) {
               )}
             </div>
 
-            <div className="px-5 py-4" style={{ borderTop: `1px solid ${NEX.border}` }}>
+            <div className="px-5 py-4 space-y-3" style={{ borderTop: `1px solid ${NEX.border}` }}>
+              {/* QC Form — aparece apenas quando status = QUALITY_CHECK */}
+              {selectedJob?.status === 'QUALITY_CHECK' && (
+                <div className="rounded-xl p-4 space-y-3" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}` }}>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider" style={{ color: NEX.textMute }}>Inspeção de qualidade</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] block mb-1" style={{ color: NEX.textDim }}>Aprovadas</label>
+                      <input type="number" min={0} value={qcApproved}
+                        onChange={(e) => setQcApproved(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-9 px-3 text-[13px] rounded-md focus:outline-none"
+                        style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.text }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] block mb-1" style={{ color: NEX.textDim }}>Rejeitadas</label>
+                      <input type="number" min={0} value={qcRejected}
+                        onChange={(e) => setQcRejected(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-9 px-3 text-[13px] rounded-md focus:outline-none"
+                        style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.text }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] block mb-1" style={{ color: NEX.textDim }}>Resultado</label>
+                    <select value={qcOutcome} onChange={(e) => setQcOutcome(e.target.value as typeof qcOutcome)}
+                      className="w-full h-9 px-3 text-[13px] rounded-md focus:outline-none"
+                      style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.text }}
+                    >
+                      <option value="APPROVED">Aprovado</option>
+                      <option value="PARTIAL_APPROVED">Aprovação parcial</option>
+                      <option value="REJECTED">Reprovado</option>
+                    </select>
+                  </div>
+                  {(qcOutcome === 'PARTIAL_APPROVED' || qcOutcome === 'REJECTED') && (
+                    <div>
+                      <label className="text-[11px] block mb-1" style={{ color: NEX.textDim }}>Motivo</label>
+                      <input value={qcReason} onChange={(e) => setQcReason(e.target.value)}
+                        className="w-full h-9 px-3 text-[13px] rounded-md focus:outline-none"
+                        placeholder="Descreva o motivo..."
+                        style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.text }}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[11px] block mb-1" style={{ color: NEX.textDim }}>Observações (opcional)</label>
+                    <input value={qcNotes} onChange={(e) => setQcNotes(e.target.value)}
+                      className="w-full h-9 px-3 text-[13px] rounded-md focus:outline-none"
+                      style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.text }}
+                    />
+                  </div>
+                  <Btn kind="primary" size="md" className="w-full justify-center"
+                    disabled={qcApproved + qcRejected === 0 || qcMutation.isPending}
+                    onClick={() => selectedJob && qcMutation.mutate(selectedJob.id)}
+                  >
+                    {qcMutation.isPending ? 'Registrando...' : 'Registrar inspeção'}
+                  </Btn>
+                </div>
+              )}
+
+              {/* Histórico de QC */}
+              {qcHistory.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider mb-2" style={{ color: NEX.textMute }}>Histórico de inspeções ({qcHistory.length})</div>
+                  <div className="space-y-1.5">
+                    {qcHistory.map((ins) => (
+                      <div key={ins.id} className="rounded-md p-2.5 text-[11.5px]" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}` }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <Pill tone={ins.outcome === 'APPROVED' ? 'green' : ins.outcome === 'PARTIAL_APPROVED' ? 'amber' : 'red'}>
+                            {ins.outcome === 'APPROVED' ? 'Aprovado' : ins.outcome === 'PARTIAL_APPROVED' ? 'Parcial' : 'Reprovado'}
+                          </Pill>
+                          <span style={{ color: NEX.textMute }}>{new Date(ins.inspectedAt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="flex gap-4 text-[11px]" style={{ color: NEX.textDim }}>
+                          <span>✓ {ins.qtyApproved} aprovadas</span>
+                          {ins.qtyRejected > 0 && <span>✗ {ins.qtyRejected} rejeitadas</span>}
+                        </div>
+                        {ins.reason && <div className="mt-1 text-[11px]" style={{ color: NEX.textDim }}>{ins.reason}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
-                {selectedJob && nextDetailActions.length > 0 && nextDetailActions.map((s) => (
+                {selectedJob && selectedJob.status !== 'QUALITY_CHECK' && nextDetailActions.length > 0 && nextDetailActions.map((s) => (
                   <Btn
                     key={s.value}
                     kind={s.kind}

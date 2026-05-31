@@ -432,3 +432,48 @@ export const maintenanceService = {
     api.post<{ data: MaintenanceLog }>(`/equipment/${equipmentId}/maintenance-log`, data).then(unwrap),
 }
 
+// ── Brands (management) ────────────────────────────────────────
+export const brandsService = {
+  findAll: (params?: { isActive?: boolean }) =>
+    api.get<{ data: (Brand & { _count: { materials: number; equipment: number } })[] }>('/brands', { params }).then(unwrap),
+  create: (data: { name: string; website?: string }) =>
+    api.post<{ data: Brand }>('/brands', data).then(unwrap),
+  update: (id: string, data: { name?: string; website?: string; isActive?: boolean }) =>
+    api.patch<{ data: Brand }>(`/brands/${id}`, data).then(unwrap),
+  remove: (id: string) =>
+    api.delete(`/brands/${id}`),
+}
+
+// ── Slicer Profiles ─────────────────────────────────────────────
+export interface SlicerProfile {
+  id: string
+  name: string
+  materialId?: string | null
+  equipmentId?: string | null
+  material?: { id: string; filamentType?: { name: string } | null; brand?: { name: string } | null } | null
+  equipment?: { id: string; name: string; model?: string | null } | null
+  nozzleTempC?: number | null
+  bedTempC?: number | null
+  speedMmS?: number | null
+  layerHeightMm?: number | null
+  infillPercent?: number | null
+  supportType?: string | null
+  notes?: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export const slicerProfilesService = {
+  findAll: (params?: { materialId?: string; equipmentId?: string; isActive?: boolean }) =>
+    api.get<{ data: SlicerProfile[] }>('/slicer-profiles', { params }).then(unwrap),
+  findOne: (id: string) =>
+    api.get<{ data: SlicerProfile }>(`/slicer-profiles/${id}`).then(unwrap),
+  create: (data: Omit<SlicerProfile, 'id' | 'material' | 'equipment' | 'createdAt' | 'updatedAt'>) =>
+    api.post<{ data: SlicerProfile }>('/slicer-profiles', data).then(unwrap),
+  update: (id: string, data: Partial<SlicerProfile>) =>
+    api.patch<{ data: SlicerProfile }>(`/slicer-profiles/${id}`, data).then(unwrap),
+  remove: (id: string) =>
+    api.delete(`/slicer-profiles/${id}`),
+}
+

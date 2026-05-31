@@ -139,6 +139,12 @@ export interface Material {
   deletedAt?: string
   createdAt: string
   _count?: { stocks: number }
+  /** Cores das bobinas disponíveis (SEALED | IN_USE), retornadas pelo findAll */
+  stocks?: Array<{
+    color1?: { id: string; name: string; hexCode?: string } | null
+    color2?: { id: string; name: string; hexCode?: string } | null
+    color3?: { id: string; name: string; hexCode?: string } | null
+  }>
 }
 
 export interface MaterialStock {

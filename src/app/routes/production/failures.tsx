@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Pill, Btn, Icons, Icon, NEX, nexAlpha } from '@/lib/nex'
@@ -216,7 +217,7 @@ export function PrintFailuresPage() {
   const analytics = analyticsData
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
 
       {/* KPI Cards */}
       {analytics && (
@@ -232,6 +233,61 @@ export function PrintFailuresPage() {
               <div className="text-[20px] font-semibold" style={{ color }}>{value}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Gráficos */}
+      {analytics && analytics.totalCount > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Barras por categoria */}
+          <div className="rounded-xl p-4" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+            <div className="text-[10.5px] uppercase tracking-wider mb-3 font-semibold" style={{ color: NEX.textMute }}>Falhas por categoria</div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={analytics.byCategory.slice(0, 8).map((b) => ({ name: CATEGORY_LABELS[b.category].slice(0, 12), count: b.count }))} margin={{ left: -20 }}>
+                <XAxis dataKey="name" tick={{ fill: 'var(--nex-text-mute)', fontSize: 10 }} />
+                <YAxis tick={{ fill: 'var(--nex-text-mute)', fontSize: 10 }} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--nex-surface-2)', border: '1px solid var(--nex-border)', borderRadius: 8, color: 'var(--nex-text)', fontSize: 12 }} />
+                <Bar dataKey="count" fill="var(--nex-cyan)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Pizza por severidade */}
+          <div className="rounded-xl p-4" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+            <div className="text-[10.5px] uppercase tracking-wider mb-3 font-semibold" style={{ color: NEX.textMute }}>Distribuição por severidade</div>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={analytics.bySeverity.map((s) => ({ name: SEVERITY_LABELS[s.severity], value: s.count }))}
+                  cx="50%" cy="50%" outerRadius={70}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {analytics.bySeverity.map((s) => (
+                    <Cell key={s.severity} fill={s.severity === 'TOTAL' ? 'var(--nex-red)' : s.severity === 'PARTIAL' ? 'var(--nex-amber)' : 'var(--nex-text-mute)'} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--nex-surface-2)', border: '1px solid var(--nex-border)', borderRadius: 8, color: 'var(--nex-text)', fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11, color: 'var(--nex-text-dim)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Barras por equipamento */}
+          {analytics.byEquipment.length > 0 && (
+            <div className="rounded-xl p-4 md:col-span-2" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
+              <div className="text-[10.5px] uppercase tracking-wider mb-3 font-semibold" style={{ color: NEX.textMute }}>Falhas por equipamento</div>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={analytics.byEquipment.map((e) => ({ name: e.equipmentName.slice(0, 16), falhas: e.count, materialG: Math.round(e.materialWastedG) }))} margin={{ left: -20 }}>
+                  <XAxis dataKey="name" tick={{ fill: 'var(--nex-text-mute)', fontSize: 10 }} />
+                  <YAxis tick={{ fill: 'var(--nex-text-mute)', fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: 'var(--nex-surface-2)', border: '1px solid var(--nex-border)', borderRadius: 8, color: 'var(--nex-text)', fontSize: 12 }} />
+                  <Bar dataKey="falhas" fill="var(--nex-red)" radius={[4, 4, 0, 0]} name="Falhas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 

@@ -8,9 +8,11 @@ interface DrawerProps {
   title: string
   children: React.ReactNode
   width?: number
+  /** Mensagem de erro exibida inline abaixo do header */
+  error?: string | null
 }
 
-export function Drawer({ open, onClose, title, children, width = 420 }: DrawerProps) {
+export function Drawer({ open, onClose, title, children, width = 420, error }: DrawerProps) {
   const [visible, setVisible] = useState(open)
   const [closing, setClosing] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -38,6 +40,8 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
 
   if (!visible) return null
 
+  const panelWidth = `min(${width}px, 100vw)`
+
   return createPortal(
     <>
       {/* Overlay */}
@@ -55,7 +59,7 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
       <div
         style={{
           position: 'fixed', right: 0, top: 0, bottom: 0,
-          width, zIndex: 40,
+          width: panelWidth, zIndex: 40,
           display: 'flex', flexDirection: 'column',
           background: NEX.surface,
           borderLeft: `1px solid ${NEX.border}`,
@@ -67,13 +71,13 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${NEX.border}` }}
         >
           <span className="text-[14px] font-semibold" style={{ color: NEX.text }}>{title}</span>
           <button
             onClick={onClose}
-            className="h-7 w-7 rounded-md flex items-center justify-center transition-colors"
+            className="h-8 w-8 rounded-md flex items-center justify-center transition-colors"
             style={{ color: NEX.textDim, background: 'transparent' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = NEX.surface2 }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
@@ -82,8 +86,23 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
           </button>
         </div>
 
+        {/* Inline error banner */}
+        {error && (
+          <div
+            className="px-5 py-3 text-[12.5px] flex items-start gap-2 flex-shrink-0"
+            style={{
+              background: `color-mix(in srgb, ${NEX.red} 10%, transparent)`,
+              borderBottom: `1px solid color-mix(in srgb, ${NEX.red} 25%, transparent)`,
+              color: NEX.red,
+            }}
+          >
+            <Icon d={Icons.alert} size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-5 py-5">
           {children}
         </div>
       </div>

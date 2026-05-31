@@ -47,6 +47,23 @@ export const jobsService = {
 
   updateQueuePosition: (id: string, body: { equipmentId: string | null; position: number }) =>
     api.patch<{ data: unknown }>(`/jobs/${id}/queue-position`, body).then(unwrap),
+
+  // ── QC Inspection ──
+  createQcInspection: (jobId: string, data: {
+    qtyApproved: number
+    qtyRejected: number
+    outcome: 'APPROVED' | 'PARTIAL_APPROVED' | 'REJECTED'
+    reason?: string
+    notes?: string
+  }) =>
+    api.post<{ data: QcInspection }>(`/jobs/${jobId}/qc`, data).then(unwrap),
+
+  getQcHistory: (jobId: string) =>
+    api.get<{ data: QcInspection[] }>(`/jobs/${jobId}/qc`).then(unwrap),
+
+  // ── Capacity Planning ──
+  getCapacity: () =>
+    api.get<{ data: CapacityLane[] }>('/jobs/capacity').then(unwrap),
 }
 
 export interface QueueJob {
@@ -107,4 +124,36 @@ export interface TimelineLane {
 export interface TimelineResponse {
   window: { from: string; to: string }
   lanes: TimelineLane[]
+}
+
+export interface QcInspection {
+  id: string
+  productionJobId: string
+  qtyApproved: number
+  qtyRejected: number
+  outcome: 'APPROVED' | 'PARTIAL_APPROVED' | 'REJECTED'
+  reason?: string | null
+  notes?: string | null
+  inspectedAt: string
+}
+
+export interface CapacityJob {
+  jobId: string
+  jobNumber: string
+  status: string
+  productName: string
+  customerName: string | null
+  estimatedStart: string
+  estimatedEnd: string
+  dueDate: string | null
+  isOverdue: boolean
+  totalPrintMinutes: number
+}
+
+export interface CapacityLane {
+  equipmentId: string
+  equipmentName: string
+  equipmentStatus: string
+  projectedFreeAt: string
+  jobs: CapacityJob[]
 }

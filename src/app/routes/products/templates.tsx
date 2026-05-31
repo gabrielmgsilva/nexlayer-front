@@ -60,8 +60,10 @@ function CreateTemplateDrawer({ open, onClose }: { open: boolean; onClose: () =>
     onError: (err) => toast.error(getApiMessage(err, 'Falha ao criar template')),
   })
 
+  const createError = create.isError ? getApiMessage(create.error, 'Falha ao criar template') : null
+
   return (
-    <Drawer open={open} onClose={() => { reset(); onClose() }} title="Novo template de precificação">
+    <Drawer open={open} onClose={() => { reset(); onClose() }} title="Novo template de precificação" error={createError}>
       <div className="space-y-4">
         <div className="rounded-lg px-3 py-2.5 text-[11.5px]" style={{ background: nexAlpha('cyan', 0.06), border: `1px solid ${nexAlpha('cyan', 0.20)}`, color: NEX.textDim }}>
           O produto âncora deve ter pelo menos um cálculo de custo feito na Calculadora.
@@ -151,9 +153,10 @@ function DeriveDrawer({ template, open, onClose }: { template: PricingTemplate |
   })
 
   const effectiveMargin = margin ? Number(margin) : Math.round((template?.defaultMargin ?? 0.4) * 100)
+  const deriveError = derive.isError ? getApiMessage(derive.error, 'Falha ao criar produto derivado') : null
 
   return (
-    <Drawer open={open} onClose={() => { reset(); onClose() }} title={`Derivar produto — ${template?.name ?? ''}`} width={500}>
+    <Drawer open={open} onClose={() => { reset(); onClose() }} title={`Derivar produto — ${template?.name ?? ''}`} width={500} error={deriveError}>
       {template && (
         <div className="space-y-5">
           {/* Taxas do template */}
@@ -285,7 +288,7 @@ export function PricingTemplatesPage() {
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 h-9 px-3 rounded-md flex-1 max-w-xs" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>

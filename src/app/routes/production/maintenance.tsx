@@ -127,10 +127,10 @@ export function MaintenancePage() {
   const canSubmit = !!equipmentId && !!description.trim() && !!performedAt
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total de registros', value: String(logs.length), color: NEX.textDim, action: () => setFilterStatus('all') },
           { label: 'Manutenções vencidas', value: String(overdueCount), color: overdueCount > 0 ? NEX.red : NEX.textDim, action: () => setFilterStatus('overdue') },

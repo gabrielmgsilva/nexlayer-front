@@ -130,7 +130,7 @@ export function SuppliersPage() {
   })
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 h-9 px-3 rounded-md flex-1 max-w-xs" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
           <Icon d={Icons.search} size={13} style={{ color: NEX.textMute }} />

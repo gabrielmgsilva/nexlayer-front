@@ -97,8 +97,8 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
-      <div className="grid grid-cols-4 gap-4">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KPICard
           label="Receita do mês"
           value={<Money value={monthRevenue} className="text-[24px] font-bold" />}
@@ -132,8 +132,8 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 space-y-4">
           <Card padding={false}>
             <div className="px-4 py-3 flex items-center" style={{ borderBottom: `1px solid ${NEX.border}` }}>
               <div className="text-[13px] font-semibold">Produção em curso</div>

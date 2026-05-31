@@ -91,7 +91,7 @@ export function TraceabilityPage() {
   const result = chain as TraceabilityResult | undefined
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
 
       {/* Search */}
       <div className="flex items-center gap-3">

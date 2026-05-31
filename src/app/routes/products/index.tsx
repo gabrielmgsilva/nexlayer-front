@@ -308,7 +308,7 @@ export function ProductsPage() {
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1 p-1 rounded-md w-fit" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
           {(['all', 'kit', 'low', 'inactive'] as Filter[]).map((f) => (

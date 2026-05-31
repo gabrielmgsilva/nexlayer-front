@@ -197,7 +197,7 @@ export function CustomersPage() {
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[16px] font-semibold">Clientes</h1>

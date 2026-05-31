@@ -19,10 +19,14 @@ import { ChannelsPage } from './routes/settings/channels'
 import { CustomersPage } from './routes/settings/customers'
 import { ColorsPage } from './routes/settings/colors'
 import { CostCenterPage } from './routes/settings/cost-center'
+import { BrandsPage } from './routes/settings/brands'
+import { SlicerProfilesPage } from './routes/settings/slicer-profiles'
 import { NotificationsPage } from './routes/notifications'
 import { ProductionPage } from './routes/production'
 import { PrintFailuresPage } from './routes/production/failures'
 import { MaintenancePage } from './routes/production/maintenance'
+import { FarmViewPage } from './routes/production/farmview'
+import { CapacityPage } from './routes/production/capacity'
 import { ReportsPage } from './routes/reports'
 import { PricingTemplatesPage } from './routes/products/templates'
 import { ProfitabilityPage } from './routes/reports/profitability'
@@ -54,9 +58,11 @@ export const router = createBrowserRouter([
       { index: true,           element: <DashboardPage /> },
       { path: 'sales',         element: <SalesPage /> },
       { path: 'sales/:id',     element: <SalesWithDrawer /> },
-      { path: 'production',             element: <ProductionPage /> },
-      { path: 'production/failures',    element: <PrintFailuresPage /> },
-      { path: 'production/maintenance', element: <MaintenancePage /> },
+      { path: 'production',                  element: <ProductionPage /> },
+      { path: 'production/failures',         element: <PrintFailuresPage /> },
+      { path: 'production/maintenance',      element: <MaintenancePage /> },
+      { path: 'production/farmview',         element: <FarmViewPage /> },
+      { path: 'production/capacity',         element: <CapacityPage /> },
       { path: 'products',      element: <ProductsPage /> },
       {
         path: 'resources',
@@ -86,6 +92,8 @@ export const router = createBrowserRouter([
           { path: 'customers',        element: <CustomersPage /> },
           { path: 'colors',           element: <ColorsPage /> },
           { path: 'cost-center',      element: <CostCenterPage /> },
+          { path: 'brands',           element: <BrandsPage /> },
+          { path: 'slicer-profiles',  element: <SlicerProfilesPage /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },
