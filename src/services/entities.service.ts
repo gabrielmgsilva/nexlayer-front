@@ -432,6 +432,20 @@ export const maintenanceService = {
     api.post<{ data: MaintenanceLog }>(`/equipment/${equipmentId}/maintenance-log`, data).then(unwrap),
 }
 
+// ── Users ──────────────────────────────────────────────────────
+export const usersService = {
+  findAll: (params?: { page?: number; limit?: number; isActive?: boolean }) =>
+    api.get<{ data: import('@/types/api.types').PaginatedResult<import('@/types/api.types').User> }>('/users', { params }).then(unwrap),
+  findOne: (id: string) =>
+    api.get<{ data: import('@/types/api.types').User }>(`/users/${id}`).then(unwrap),
+  create: (data: { name: string; email: string; password: string; role: string }) =>
+    api.post<{ data: import('@/types/api.types').User }>('/users', data).then(unwrap),
+  update: (id: string, data: { name?: string; role?: string; isActive?: boolean; password?: string }) =>
+    api.patch<{ data: import('@/types/api.types').User }>(`/users/${id}`, data).then(unwrap),
+  remove: (id: string) =>
+    api.delete(`/users/${id}`),
+}
+
 // ── Brands (management) ────────────────────────────────────────
 export const brandsService = {
   findAll: (params?: { isActive?: boolean }) =>

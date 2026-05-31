@@ -2,6 +2,50 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon, Icons, NEX } from '@/lib/nex'
 
+// DrawerPanel — versão raw onde o children controla todo o conteúdo (header, body, footer)
+interface DrawerPanelProps {
+  open: boolean
+  onClose: () => void
+  width?: number
+  children: React.ReactNode
+}
+
+export function DrawerPanel({ open, onClose, width = 440, children }: DrawerPanelProps) {
+  const [visible, setVisible] = useState(open)
+  const [closing, setClosing] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (open) { setClosing(false); setVisible(true) }
+    else if (visible) {
+      setClosing(true)
+      timerRef.current = setTimeout(() => { setVisible(false); setClosing(false) }, 220)
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  if (!visible) return null
+
+  const panelWidth = `min(${width}px, 100vw)`
+
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 35, background: 'rgba(7,9,12,0.65)', backdropFilter: 'blur(4px)', animation: closing ? 'nex-overlay-in 0.22s ease reverse' : 'nex-overlay-in 0.22s ease' }} />
+      <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: panelWidth, zIndex: 40, display: 'flex', flexDirection: 'column', background: NEX.surface, borderLeft: `1px solid ${NEX.border}`, boxShadow: '-24px 0 48px rgba(0,0,0,0.35)', animation: closing ? 'nex-drawer-out 0.22s cubic-bezier(0.4,0,1,1) forwards' : 'nex-drawer-in 0.25s cubic-bezier(0,0,0.2,1)' }}>
+        {children}
+      </div>
+    </>,
+    document.body,
+  )
+}
+
 interface DrawerProps {
   open: boolean
   onClose: () => void
