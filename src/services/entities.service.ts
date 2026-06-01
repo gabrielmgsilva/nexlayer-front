@@ -466,12 +466,8 @@ export interface SlicerProfile {
   equipmentId?: string | null
   material?: { id: string; filamentType?: { name: string } | null; brand?: { name: string } | null } | null
   equipment?: { id: string; name: string; model?: string | null } | null
-  nozzleTempC?: number | null
-  bedTempC?: number | null
-  speedMmS?: number | null
-  layerHeightMm?: number | null
-  infillPercent?: number | null
-  supportType?: string | null
+  /** Mapa livre de parâmetros: { "Temperatura Nozzle": "220°C", "Infill": "15%" } */
+  params: Record<string, string>
   notes?: string | null
   isActive: boolean
   createdAt: string

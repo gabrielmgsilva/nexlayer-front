@@ -9,6 +9,17 @@ import { equipmentService, materialsService } from '@/services/entities.service'
 import type { Equipment, Material } from '@/types/api.types'
 import { Field, inputCls, getApiMessage } from './_shared'
 
+interface ParamRow { key: string; value: string }
+
+function paramsToRows(params: Record<string, string>): ParamRow[] {
+  const entries = Object.entries(params)
+  return entries.length > 0 ? entries.map(([key, value]) => ({ key, value })) : [{ key: '', value: '' }]
+}
+
+function rowsToParams(rows: ParamRow[]): Record<string, string> {
+  return Object.fromEntries(rows.filter((r) => r.key.trim()).map((r) => [r.key.trim(), r.value.trim()]))
+}
+
 export function SlicerProfilesPage() {
   const queryClient = useQueryClient()
   const { data: profiles = [] } = useQuery<SlicerProfile[]>({
@@ -29,12 +40,7 @@ export function SlicerProfilesPage() {
   const [name, setName] = useState('')
   const [materialId, setMaterialId] = useState('')
   const [equipmentId, setEquipmentId] = useState('')
-  const [nozzleTempC, setNozzleTempC] = useState('')
-  const [bedTempC, setBedTempC] = useState('')
-  const [speedMmS, setSpeedMmS] = useState('')
-  const [layerHeightMm, setLayerHeightMm] = useState('')
-  const [infillPercent, setInfillPercent] = useState('')
-  const [supportType, setSupportType] = useState('')
+  const [paramRows, setParamRows] = useState<ParamRow[]>([{ key: '', value: '' }])
   const [notes, setNotes] = useState('')
 
   const filtered = useMemo(() => {
@@ -43,27 +49,31 @@ export function SlicerProfilesPage() {
     return profiles.filter((p) =>
       p.name.toLowerCase().includes(q) ||
       (p.equipment?.name ?? '').toLowerCase().includes(q) ||
-      (p.material?.filamentType?.name ?? '').toLowerCase().includes(q),
+      (p.material?.filamentType?.name ?? '').toLowerCase().includes(q) ||
+      Object.keys(p.params ?? {}).some((k) => k.toLowerCase().includes(q)),
     )
   }, [profiles, search])
 
   const resetForm = () => {
     setEditingId(null); setName(''); setMaterialId(''); setEquipmentId('')
-    setNozzleTempC(''); setBedTempC(''); setSpeedMmS(''); setLayerHeightMm('')
-    setInfillPercent(''); setSupportType(''); setNotes('')
+    setParamRows([{ key: '', value: '' }]); setNotes('')
   }
 
   const openCreate = () => { resetForm(); setDrawerOpen(true) }
   const openEdit = (p: SlicerProfile) => {
-    setEditingId(p.id); setName(p.name); setMaterialId(p.materialId ?? ''); setEquipmentId(p.equipmentId ?? '')
-    setNozzleTempC(p.nozzleTempC != null ? String(p.nozzleTempC) : '')
-    setBedTempC(p.bedTempC != null ? String(p.bedTempC) : '')
-    setSpeedMmS(p.speedMmS != null ? String(p.speedMmS) : '')
-    setLayerHeightMm(p.layerHeightMm != null ? String(p.layerHeightMm) : '')
-    setInfillPercent(p.infillPercent != null ? String(p.infillPercent) : '')
-    setSupportType(p.supportType ?? ''); setNotes(p.notes ?? '')
+    setEditingId(p.id); setName(p.name)
+    setMaterialId(p.materialId ?? ''); setEquipmentId(p.equipmentId ?? '')
+    setParamRows(paramsToRows(p.params ?? {})); setNotes(p.notes ?? '')
     setDrawerOpen(true)
   }
+
+  const updateRow = (idx: number, field: 'key' | 'value', val: string) =>
+    setParamRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: val } : r))
+
+  const addRow = () => setParamRows((prev) => [...prev, { key: '', value: '' }])
+
+  const removeRow = (idx: number) =>
+    setParamRows((prev) => prev.length > 1 ? prev.filter((_, i) => i !== idx) : [{ key: '', value: '' }])
 
   const save = useMutation({
     mutationFn: () => {
@@ -71,12 +81,7 @@ export function SlicerProfilesPage() {
         name: name.trim(),
         materialId: materialId || undefined,
         equipmentId: equipmentId || undefined,
-        nozzleTempC: nozzleTempC ? parseInt(nozzleTempC) : undefined,
-        bedTempC: bedTempC ? parseInt(bedTempC) : undefined,
-        speedMmS: speedMmS ? parseInt(speedMmS) : undefined,
-        layerHeightMm: layerHeightMm ? parseFloat(layerHeightMm) : undefined,
-        infillPercent: infillPercent ? parseInt(infillPercent) : undefined,
-        supportType: supportType.trim() || undefined,
+        params: rowsToParams(paramRows),
         notes: notes.trim() || undefined,
         isActive: true,
       }
@@ -126,8 +131,9 @@ export function SlicerProfilesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((p) => {
-            const matLabel = p.material ? [p.material.filamentType?.name, p.material.brand?.name].filter(Boolean).join(' · ') : '—'
-            const eqLabel = p.equipment ? `${p.equipment.name}${p.equipment.model ? ` · ${p.equipment.model}` : ''}` : '—'
+            const matLabel = p.material ? [p.material.filamentType?.name, p.material.brand?.name].filter(Boolean).join(' · ') : null
+            const eqLabel = p.equipment ? `${p.equipment.name}${p.equipment.model ? ` · ${p.equipment.model}` : ''}` : null
+            const paramEntries = Object.entries(p.params ?? {})
             return (
               <div key={p.id} className="rounded-xl p-4 space-y-3" style={{ background: NEX.surface, border: `1px solid ${NEX.border}` }}>
                 <div className="flex items-start justify-between gap-2">
@@ -142,19 +148,24 @@ export function SlicerProfilesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1 text-[11.5px]" style={{ color: NEX.textDim }}>
-                  <div className="flex justify-between"><span style={{ color: NEX.textMute }}>Material</span><span className="truncate max-w-[55%] text-right">{matLabel}</span></div>
-                  <div className="flex justify-between"><span style={{ color: NEX.textMute }}>Impressora</span><span className="truncate max-w-[55%] text-right">{eqLabel}</span></div>
-                </div>
+                {(matLabel || eqLabel) && (
+                  <div className="space-y-0.5 text-[11.5px]">
+                    {matLabel && <div className="flex justify-between"><span style={{ color: NEX.textMute }}>Material</span><span className="truncate max-w-[55%] text-right">{matLabel}</span></div>}
+                    {eqLabel && <div className="flex justify-between"><span style={{ color: NEX.textMute }}>Impressora</span><span className="truncate max-w-[55%] text-right">{eqLabel}</span></div>}
+                  </div>
+                )}
 
-                <div className="grid grid-cols-3 gap-2 text-[11px]">
-                  {p.nozzleTempC != null && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Nozzle</div><div className="font-mono font-semibold">{p.nozzleTempC}°C</div></div>}
-                  {p.bedTempC != null && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Cama</div><div className="font-mono font-semibold">{p.bedTempC}°C</div></div>}
-                  {p.speedMmS != null && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Vel.</div><div className="font-mono font-semibold">{p.speedMmS}mm/s</div></div>}
-                  {p.layerHeightMm != null && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Camada</div><div className="font-mono font-semibold">{p.layerHeightMm}mm</div></div>}
-                  {p.infillPercent != null && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Infill</div><div className="font-mono font-semibold">{p.infillPercent}%</div></div>}
-                  {p.supportType && <div className="rounded-md px-2 py-1.5 text-center" style={{ background: NEX.surface2 }}><div style={{ color: NEX.textMute }}>Suporte</div><div className="font-semibold truncate">{p.supportType}</div></div>}
-                </div>
+                {paramEntries.length > 0 && (
+                  <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${NEX.border}` }}>
+                    {paramEntries.map(([key, val], idx) => (
+                      <div key={key} className="flex items-center justify-between px-2.5 py-1.5 text-[11.5px]"
+                        style={{ borderTop: idx > 0 ? `1px solid ${NEX.border}` : undefined, background: idx % 2 === 0 ? 'transparent' : NEX.surface2 }}>
+                        <span style={{ color: NEX.textMute }}>{key}</span>
+                        <span className="font-mono font-medium tabular-nums">{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {p.notes && <div className="text-[11px] italic" style={{ color: NEX.textMute }}>{p.notes}</div>}
               </div>
@@ -169,12 +180,14 @@ export function SlicerProfilesPage() {
           <Field label="Nome *">
             <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Ex.: PLA Bambu 0.4mm Standard" autoFocus />
           </Field>
+
           <Field label="Material (opcional)">
             <select value={materialId} onChange={(e) => setMaterialId(e.target.value)} className={inputCls}>
               <option value="">— qualquer —</option>
               {materials.map((m) => <option key={m.id} value={m.id}>{m.filamentType?.name ?? 'Sem tipo'} · {m.brand?.name ?? '—'}</option>)}
             </select>
           </Field>
+
           <Field label="Impressora (opcional)">
             <select value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} className={inputCls}>
               <option value="">— qualquer —</option>
@@ -182,27 +195,56 @@ export function SlicerProfilesPage() {
             </select>
           </Field>
 
-          <div className="text-[10px] font-semibold uppercase tracking-widest pt-2" style={{ color: NEX.textMute }}>Parâmetros de impressão</div>
+          {/* Editor de parâmetros livre */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: NEX.textMute }}>Parâmetros</span>
+              <button
+                onClick={addRow}
+                className="flex items-center gap-1 text-[11.5px] font-medium"
+                style={{ color: NEX.cyan }}
+              >
+                <Icon d={Icons.plus} size={11} /> Adicionar
+              </button>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Temp. nozzle (°C)">
-              <input type="number" value={nozzleTempC} onChange={(e) => setNozzleTempC(e.target.value)} className={inputCls} placeholder="220" />
-            </Field>
-            <Field label="Temp. cama (°C)">
-              <input type="number" value={bedTempC} onChange={(e) => setBedTempC(e.target.value)} className={inputCls} placeholder="60" />
-            </Field>
-            <Field label="Velocidade (mm/s)">
-              <input type="number" value={speedMmS} onChange={(e) => setSpeedMmS(e.target.value)} className={inputCls} placeholder="150" />
-            </Field>
-            <Field label="Altura de camada (mm)">
-              <input type="number" step="0.01" value={layerHeightMm} onChange={(e) => setLayerHeightMm(e.target.value)} className={inputCls} placeholder="0.20" />
-            </Field>
-            <Field label="Infill (%)">
-              <input type="number" min={0} max={100} value={infillPercent} onChange={(e) => setInfillPercent(e.target.value)} className={inputCls} placeholder="15" />
-            </Field>
-            <Field label="Tipo de suporte">
-              <input value={supportType} onChange={(e) => setSupportType(e.target.value)} className={inputCls} placeholder="Linear, Árvore, Nenhum…" />
-            </Field>
+            <div className="space-y-2">
+              {paramRows.map((row, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="flex-1" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                    <input
+                      value={row.key}
+                      onChange={(e) => updateRow(idx, 'key', e.target.value)}
+                      placeholder="Nome (ex: Temperatura Nozzle)"
+                      className="w-full h-8 px-3 bg-transparent text-[12.5px] focus:outline-none"
+                      style={{ color: NEX.text }}
+                    />
+                  </div>
+                  <div className="flex-1" style={{ background: NEX.surface2, border: `1px solid ${NEX.border}`, borderRadius: 6 }}>
+                    <input
+                      value={row.value}
+                      onChange={(e) => updateRow(idx, 'value', e.target.value)}
+                      placeholder="Valor (ex: 220°C)"
+                      className="w-full h-8 px-3 bg-transparent text-[12.5px] focus:outline-none"
+                      style={{ color: NEX.text }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => removeRow(idx)}
+                    className="h-8 w-8 rounded flex items-center justify-center flex-shrink-0 opacity-40 hover:opacity-100"
+                    style={{ color: NEX.red }}
+                  >
+                    <Icon d={Icons.x} size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {paramRows.every((r) => !r.key.trim()) && (
+              <div className="mt-1.5 text-[11px]" style={{ color: NEX.textMute }}>
+                Sem parâmetros. Clique em "Adicionar" para incluir nome/valor livres.
+              </div>
+            )}
           </div>
 
           <Field label="Observações">
