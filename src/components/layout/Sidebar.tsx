@@ -76,8 +76,15 @@ export function Sidebar() {
     },
   ]
 
+  const allPaths = groups.flatMap((g) => g.items.map((i) => i.path))
+
+  // Apenas o item mais específico (maior prefixo) fica ativo
+  const bestMatch = allPaths
+    .filter((p) => p !== '/' && location.pathname.startsWith(p))
+    .sort((a, b) => b.length - a.length)[0] ?? (location.pathname === '/' ? '/' : null)
+
   const isActive = (path: string) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
+    path === '/' ? location.pathname === '/' : bestMatch === path
 
   const initials = (user?.name ?? 'NX')
     .split(' ')
