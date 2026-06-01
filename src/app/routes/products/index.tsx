@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, Component, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -13,7 +13,56 @@ type Filter = 'all' | 'kit' | 'low' | 'inactive'
 type ProductPrintFile = Product['printFiles'][number]
 type KitItemForm = { productId: string; quantity: string }
 
-const ModelPreviewModal = lazy(() => import('@/components/products/model-preview-modal'))
+// Retry once antes de deixar o ErrorBoundary tratar — cobre erros de rede transitórios
+const ModelPreviewModal = lazy(() =>
+  import('@/components/products/model-preview-modal').catch(() =>
+    import('@/components/products/model-preview-modal'),
+  ),
+)
+
+// ErrorBoundary para chunk load failures (deploy Vercel invalida hashes antigos)
+class ModelLoadErrorBoundary extends Component<
+  { onClose: () => void; children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { onClose: () => void; children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() { return { hasError: true } }
+
+  render() {
+    if (!this.state.hasError) return this.props.children
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0" style={{ background: 'rgba(3, 8, 14, 0.78)' }} onClick={this.props.onClose} />
+        <div className="relative rounded-xl p-6 space-y-4 max-w-sm w-full text-center" style={{ background: 'var(--nex-surface)', border: '1px solid var(--nex-border)' }}>
+          <div className="text-[14px] font-semibold" style={{ color: 'var(--nex-text)' }}>Falha ao carregar o visualizador 3D</div>
+          <div className="text-[12.5px]" style={{ color: 'var(--nex-text-dim)' }}>
+            O arquivo do visualizador não pôde ser carregado. Isso pode acontecer após uma atualização do sistema.
+          </div>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-md text-[12.5px] font-medium"
+              style={{ background: 'var(--nex-cyan)', color: '#001F26' }}
+            >
+              Recarregar página
+            </button>
+            <button
+              onClick={this.props.onClose}
+              className="px-4 py-2 rounded-md text-[12.5px]"
+              style={{ background: 'var(--nex-surface-2)', color: 'var(--nex-text-dim)', border: '1px solid var(--nex-border)' }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+}
 
 function isPreviewSupportedFile(file: ProductPrintFile) {
   const format = file.format?.toLowerCase()
@@ -1368,25 +1417,27 @@ function ProductDetails({
       </div>
 
       {previewFile && (
-        <Suspense
-          fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="absolute inset-0" style={{ background: 'rgba(3, 8, 14, 0.78)' }} />
-              <div
-                className="relative px-4 py-3 rounded-md text-[12px]"
-                style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.textDim }}
-              >
-                Carregando visualizador 3D...
+        <ModelLoadErrorBoundary onClose={() => setPreviewFile(null)}>
+          <Suspense
+            fallback={
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0" style={{ background: 'rgba(3, 8, 14, 0.78)' }} />
+                <div
+                  className="relative px-4 py-3 rounded-md text-[12px]"
+                  style={{ background: NEX.surface, border: `1px solid ${NEX.border}`, color: NEX.textDim }}
+                >
+                  Carregando visualizador 3D...
+                </div>
               </div>
-            </div>
-          }
-        >
-          <ModelPreviewModal
-            productId={product.id}
-            file={previewFile}
-            onClose={() => setPreviewFile(null)}
-          />
-        </Suspense>
+            }
+          >
+            <ModelPreviewModal
+              productId={product.id}
+              file={previewFile}
+              onClose={() => setPreviewFile(null)}
+            />
+          </Suspense>
+        </ModelLoadErrorBoundary>
       )}
 
       <ConfirmDialog

@@ -306,9 +306,9 @@ export const domainService = {
   // AccessoryCategories
   getAccessoryCategories: () =>
     api.get<{ data: AccessoryCategory[] }>('/domain/accessory-categories').then(unwrap),
-  createAccessoryCategory: (data: { name: string }) =>
+  createAccessoryCategory: (data: { name: string; parentId?: string }) =>
     api.post<{ data: AccessoryCategory }>('/domain/accessory-categories', data).then(unwrap),
-  updateAccessoryCategory: (id: string, data: { name?: string; isActive?: boolean }) =>
+  updateAccessoryCategory: (id: string, data: { name?: string; parentId?: string | null; isActive?: boolean }) =>
     api.put<{ data: AccessoryCategory }>(`/domain/accessory-categories/${id}`, data).then(unwrap),
   deleteAccessoryCategory: (id: string) =>
     api.delete(`/domain/accessory-categories/${id}`),

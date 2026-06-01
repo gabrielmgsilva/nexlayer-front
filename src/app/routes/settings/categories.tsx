@@ -28,6 +28,45 @@ function Section({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
+interface CategoryNode extends Category { children: CategoryNode[] }
+
+function buildTree(flat: Category[]): CategoryNode[] {
+  const map = new Map<string, CategoryNode>()
+  flat.forEach((c) => map.set(c.id, { ...c, children: [] }))
+  const roots: CategoryNode[] = []
+  map.forEach((node) => {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId)!.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+  const sort = (nodes: CategoryNode[]) => {
+    nodes.sort((a, b) => a.name.localeCompare(b.name))
+    nodes.forEach((n) => sort(n.children))
+    return nodes
+  }
+  return sort(roots)
+}
+
+function ActionBtn({
+  children, color, title, disabled, onClick,
+}: {
+  children: React.ReactNode; color: string; title: string; disabled?: boolean; onClick?: () => void
+}) {
+  return (
+    <button
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      className="h-6 w-6 rounded flex items-center justify-center transition-opacity opacity-60 hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed"
+      style={{ color }}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function CategoriesPage() {
   const queryClient = useQueryClient()
   const { data: categories = [] } = useQuery({
@@ -124,12 +163,6 @@ export function CategoriesPage() {
 
   const canSubmit = !!name.trim() && !!slug.trim()
 
-  const parentMap = useMemo(() => {
-    const m: Record<string, string> = {}
-    categories.forEach((c: Category) => { m[c.id] = c.name })
-    return m
-  }, [categories])
-
   return (
     <div className="space-y-5">
       {/* Toolbar */}
@@ -152,76 +185,91 @@ export function CategoriesPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Árvore de categorias */}
       <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${NEX.border}`, background: NEX.surface }}>
-        <table className="w-full text-[12.5px]">
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${NEX.border}` }}>
-              {['Categoria', 'Slug', 'Categoria pai', 'Produtos', 'Status', ''].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: NEX.textMute }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={6}>
-                <div className="flex flex-col items-center justify-center py-14" style={{ color: NEX.textMute }}>
-                  <Icon d={Icons.layers} size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
-                  <p className="text-[13px]">
-                    {search ? `Nenhum resultado para "${search}"` : 'Nenhuma categoria cadastrada.'}
-                  </p>
-                  {!search && (
-                    <Btn kind="ghost" size="sm" icon={Icons.plus} className="mt-4" onClick={openCreate}>
-                      Adicionar primeira categoria
-                    </Btn>
-                  )}
-                </div>
-              </td></tr>
-            )}
-            {filtered.map((c: Category) => (
-              <tr key={c.id} className="group" style={{ borderTop: `1px solid ${NEX.border}` }}>
-                <td className="px-4 py-3">
-                  <div className="font-medium" style={{ color: NEX.text }}>{c.name}</div>
-                  {c.description && (
-                    <div className="text-[11px] truncate max-w-[200px]" style={{ color: NEX.textDim }}>{c.description}</div>
-                  )}
-                </td>
-                <td className="px-2">
-                  <span className="font-mono text-[11.5px] px-1.5 py-0.5 rounded" style={{ background: NEX.surface2, color: NEX.textDim }}>
-                    {c.slug}
+        {/* Cabeçalho */}
+        <div className="grid px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ gridTemplateColumns: '1fr auto auto auto auto', gap: 8, borderBottom: `1px solid ${NEX.border}`, color: NEX.textMute, background: NEX.surface2 }}>
+          <span>Categoria</span>
+          <span className="w-32 text-left">Slug</span>
+          <span className="w-14 text-center">Produtos</span>
+          <span className="w-16 text-center">Status</span>
+          <span className="w-20" />
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14" style={{ color: NEX.textMute }}>
+            <Icon d={Icons.layers} size={28} style={{ marginBottom: 10, opacity: 0.4 }} />
+            <p className="text-[13px]">{search ? `Nenhum resultado para "${search}"` : 'Nenhuma categoria cadastrada.'}</p>
+            {!search && <Btn kind="ghost" size="sm" icon={Icons.plus} className="mt-4" onClick={openCreate}>Adicionar primeira categoria</Btn>}
+          </div>
+        ) : (() => {
+          const tree = buildTree(search.trim() ? filtered : (categories as Category[]))
+          const visibleIds = new Set(filtered.map((c: Category) => c.id))
+
+          const renderNode = (node: CategoryNode, depth: number, isLast: boolean): React.ReactNode => {
+            if (search.trim() && !visibleIds.has(node.id) && !node.children.some((ch) => visibleIds.has(ch.id))) return null
+            const blocked = (node._count?.products ?? 0) > 0 || (node._count?.children ?? 0) > 0
+            return (
+              <div key={node.id}>
+                <div
+                  className="group grid items-center px-4 py-2.5 hover:bg-[#11161E] transition-colors"
+                  style={{ gridTemplateColumns: '1fr auto auto auto auto', gap: 8, borderTop: `1px solid ${NEX.border}` }}
+                >
+                  {/* Nome com indentação */}
+                  <div className="flex items-center gap-1 min-w-0" style={{ paddingLeft: depth * 20 }}>
+                    {depth > 0 && (
+                      <span className="flex-shrink-0 text-[13px] select-none" style={{ color: NEX.border }}>
+                        {isLast ? '└─' : '├─'}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-medium truncate" style={{ color: node.isActive ? NEX.text : NEX.textMute }}>
+                        {node.name}
+                        {node.children.length > 0 && (
+                          <span className="ml-1.5 text-[10px] font-mono" style={{ color: NEX.textMute }}>
+                            {node.children.length} sub
+                          </span>
+                        )}
+                      </div>
+                      {node.description && <div className="text-[11px] truncate" style={{ color: NEX.textDim }}>{node.description}</div>}
+                    </div>
+                  </div>
+
+                  {/* Slug */}
+                  <span className="w-32 font-mono text-[11px] px-1.5 py-0.5 rounded truncate" style={{ background: NEX.surface2, color: NEX.textDim }}>
+                    {node.slug}
                   </span>
-                </td>
-                <td className="px-2 text-[11.5px]" style={{ color: NEX.textDim }}>
-                  {c.parentId ? (parentMap[c.parentId] ?? '—') : <span style={{ color: NEX.textMute }}>Raiz</span>}
-                </td>
-                <td className="px-2 text-[11.5px] font-mono" style={{ color: NEX.textDim }}>
-                  {c._count?.products ?? 0}
-                </td>
-                <td className="px-2">
-                  <Pill tone={c.isActive ? 'green' : 'default'}>{c.isActive ? 'Ativa' : 'Inativa'}</Pill>
-                </td>
-                <td className="px-4 text-right">
-                  <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ActionBtn color={NEX.cyan} title="Editar" onClick={() => openEdit(c)}>
+
+                  {/* Produtos */}
+                  <span className="w-14 text-center font-mono text-[11.5px]" style={{ color: NEX.textDim }}>
+                    {node._count?.products ?? 0}
+                  </span>
+
+                  {/* Status */}
+                  <span className="w-16 text-center">
+                    <Pill tone={node.isActive ? 'green' : 'default'}>{node.isActive ? 'Ativa' : 'Inativa'}</Pill>
+                  </span>
+
+                  {/* Ações */}
+                  <div className="w-20 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ActionBtn color={NEX.cyan} title="Editar" onClick={() => openEdit(node)}>
                       <Icon d={Icons.edit} size={12} />
                     </ActionBtn>
-                    <ActionBtn color={NEX.amber} title={c.isActive ? 'Desativar' : 'Ativar'} onClick={() => setPendingToggle(c)}>
-                      <Icon d={c.isActive ? Icons.x : Icons.check} size={12} />
+                    <ActionBtn color={NEX.amber} title={node.isActive ? 'Desativar' : 'Ativar'} onClick={() => setPendingToggle(node)}>
+                      <Icon d={node.isActive ? Icons.x : Icons.check} size={12} />
                     </ActionBtn>
-                    <ActionBtn
-                      color={(c._count?.products ?? 0) > 0 || (c._count?.children ?? 0) > 0 ? NEX.textMute : NEX.red}
-                      title={(c._count?.products ?? 0) > 0 ? 'Categoria com produtos — não pode excluir' : 'Excluir'}
-                      disabled={(c._count?.products ?? 0) > 0 || (c._count?.children ?? 0) > 0}
-                      onClick={() => setPendingDelete(c)}
-                    >
+                    <ActionBtn color={blocked ? NEX.textMute : NEX.red} title={blocked ? 'Possui produtos ou subcategorias' : 'Excluir'} disabled={blocked} onClick={() => setPendingDelete(node)}>
                       <Icon d={Icons.trash} size={12} />
                     </ActionBtn>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                {node.children.map((child, i) => renderNode(child, depth + 1, i === node.children.length - 1))}
+              </div>
+            )
+          }
+
+          return <>{tree.map((root, i) => renderNode(root, 0, i === tree.length - 1))}</>
+        })()}
       </div>
 
       {/* Drawer */}
@@ -360,21 +408,3 @@ export function CategoriesPage() {
   )
 }
 
-function ActionBtn({
-  children, color, title, onClick, disabled,
-}: {
-  children: React.ReactNode; color: string; title: string
-  onClick: () => void; disabled?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick} disabled={disabled} title={title}
-      className="h-7 w-7 rounded flex items-center justify-center transition-colors disabled:opacity-30"
-      style={{ color, background: 'transparent' }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = nexAlpha('surface2', 1) }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-    >
-      {children}
-    </button>
-  )
-}

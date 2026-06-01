@@ -82,8 +82,10 @@ export interface Brand {
 export interface AccessoryCategory {
   id: string
   name: string
+  parentId?: string | null
   isActive: boolean
   createdAt: string
+  _count?: { accessories: number; children: number }
 }
 
 export interface Unit {
